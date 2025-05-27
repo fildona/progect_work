@@ -13,3 +13,4 @@ dependencies:
   - flask-cors
   - sqlalchemy
   - requests
+  - openpyxl
