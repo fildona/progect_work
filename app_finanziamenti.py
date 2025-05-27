@@ -221,6 +221,7 @@ def predict_loan_approval():
 
         return jsonify({"probabilita_approvazione": float(probability_approved)})
 
+    
     except KeyError as e:
         app.logger.warning(f"Campo mancante o errato nella richiesta JSON: {str(e)}", exc_info=True)
         return jsonify({"error": f"Campo mancante o errato nella richiesta JSON: {str(e)}"}), 400
