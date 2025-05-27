@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizza Richieste - FinPredix</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #eef2f5;
+            color: #333;
+            opacity: 0; /* Initial state for fade-in */
+            transition: opacity 0.5s ease-in-out;
+        }
+        body.loaded { /* Class to trigger fade-in */
+            opacity: 1;
+        }
+        .card {
+            border: none;
+            border-radius: 0.75rem;
+            transition: box-shadow 0.3s ease-out; /* Only transition box-shadow */
+        }
+        .card:hover {
+            /* transform: translateY(-5px); */ /* Removed translateY */
+            box-shadow: 0 0.4rem 0.8rem rgba(0,0,0,0.08); /* Softer shadow */
+        }
+        .card-header {
+            background-color: #0056b3;
+            color: white;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .card-header h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        .form-control, .form-select {
+            border-radius: 0.375rem;
+            font-size: 0.9rem;
+        }
+        .btn-primary {
+            background-color: #0069d9;
+            border-color: #0062cc;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            font-weight: 500;
+        }
+        .btn-success {
+            background-color: #198754;
+            border-color: #198754;
+            font-weight: 500;
+        }
+        .table {
+            background-color: #fff;
+            border-radius: 0.5rem;
+            overflow: hidden; /* For rounded corners on table */
+        }
+        .table th {
+            background-color: #f8f9fa; /* Light grey for table header */
+            color: #333;
+            font-weight: 600;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .table td {
+            vertical-align: middle;
+            font-size: 0.85rem;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+        .table th i {
+            font-size: 0.8em;
+            margin-left: 0.3rem;
+            color: #6c757d;
+        }
+        .table th.sortable:hover {
+            background-color: #e9ecef;
+            cursor: pointer;
+        }
+        #filterForm .col-md-2, #filterForm .col-md-3, #filterForm .col-md-4, #filterForm .col-md-12 {
+            padding-bottom: 0.5rem; /* Add some space below form groups */
+        }
+        #loadingSpinner {
+            display: none; /* Hidden by default */
+            text-align: center;
+            padding: 2rem;
+        }
+        .badge-approvato {
+            background-color: #d1e7dd !important;
+            color: #0f5132 !important;
+        }
+        .badge-rifiutato {
+            background-color: #f8d7da !important;
+            color: #842029 !important;
+        }
+        .sticky-header th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4 mb-5 px-lg-4">
+        <div class="card shadow-lg">
+            <div class="card-header text-center">
+                <h2 class="mb-0"><i class="fas fa-list-alt me-2"></i>Elenco Richieste di Finanziamento</h2>
+            </div>
+            <div class="card-body p-4">
+                <form id="filterForm" class="row g-3 mb-4 align-items-end">
+                    <div class="col-md-2">
+                        <label for="Eta_min" class="form-label">Età:</label>
+                        <input type="number" class="form-control" name="Eta_min" id="Eta_min" placeholder="Min">
+                        <input type="number" class="form-control mt-1" name="Eta_max" placeholder="Max">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="Sesso" class="form-label">Sesso:</label>
+                        <select class="form-select" name="Sesso" id="Sesso">
+                            <option value="">Tutti</option>
+                            <option value="M">Maschile</option>
+                            <option value="F">Femminile</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="TitoloStudio" class="form-label">Titolo Studio:</label>
+                        <select class="form-select" name="TitoloStudio" id="TitoloStudio">
+                            <option value="">Tutti</option>
+                            <option value="Licenza media">Licenza Media</option>
+                            <option value="Diploma">Diploma</option>
+                            <option value="Laurea">Laurea</option>
+                            <option value="Dottorato di ricerca">Dottorato/Master</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="RedditoLordoUltimoAnno_min" class="form-label">Reddito Lordo (€):</label>
+                        <input type="number" class="form-control" name="RedditoLordoUltimoAnno_min" id="RedditoLordoUltimoAnno_min" placeholder="Min">
+                        <input type="number" class="form-control mt-1" name="RedditoLordoUltimoAnno_max" placeholder="Max">
+                    </div>
+                     <div class="col-md-3">
+                        <label for="ImportoRichiesto_min" class="form-label">Importo Richiesto (€):</label>
+                        <input type="number" class="form-control" name="ImportoRichiesto_min" id="ImportoRichiesto_min" placeholder="Min">
+                        <input type="number" class="form-control mt-1" name="ImportoRichiesto_max" placeholder="Max">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ProbabilitaFinanziamentoApprovato_min" class="form-label">Prob. Approv. (%):</label>
+                        <input type="number" step="0.01" class="form-control" name="ProbabilitaFinanziamentoApprovato_min" id="ProbabilitaFinanziamentoApprovato_min" placeholder="Min (0-1)">
+                        <input type="number" step="0.01" class="form-control mt-1" name="ProbabilitaFinanziamentoApprovato_max" placeholder="Max (0-1)">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ScopoFinanziamento" class="form-label">Scopo Finanziamento:</label>
+                        <select class="form-select" name="ScopoFinanziamento" id="ScopoFinanziamento">
+                            <option value="">Tutti</option>
+                            <option value="Personale">Personale</option>
+                            <option value="Formazione">Formazione</option>
+                            <option value="Medico">Spese Mediche</option>
+                            <option value="InizioAttivitaImprenditoriale">Avvio Attività</option>
+                            <option value="RistrutturazioneCasa">Ristrutturazione Casa</option>
+                            <option value="RistrutturazioneAltriDebiti">Consolidamento Debiti</option>
+                            <option value="Altro">Altro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="InformazioniImmobile" class="form-label">Situazione Immobiliare:</label>
+                        <select class="form-select" name="InformazioniImmobile" id="InformazioniImmobile">
+                            <option value="">Tutti</option>
+                            <option value="Affitto">In Affitto</option>
+                            <option value="ProprietàMutuoEstinto">Proprietà (Mutuo Estinto)</option>
+                            <option value="ProprietàMutuoDaEstinguere">Proprietà (Mutuo in Corso)</option>
+                            <option value="Altro">Altro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 mt-3 d-flex justify-content-start align-items-center gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search me-2"></i>Cerca</button>
+                        <button type="button" class="btn btn-outline-secondary" id="resetBtn"><i class="fas fa-undo me-2"></i>Reset Filtri</button>
+                        <div class="ms-auto d-flex gap-2">
+                            <button type="button" class="btn btn-success" id="exportCsv"><i class="fas fa-file-csv me-2"></i>CSV</button>
+                            <button type="button" class="btn btn-success" id="exportExcel"><i class="fas fa-file-excel me-2"></i>Excel</button>
+                            <button type="button" class="btn btn-success" id="exportJson"><i class="fas fa-file-code me-2"></i>JSON</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="loadingSpinner">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Caricamento...</span>
+                    </div>
+                    <p class="mt-2">Caricamento dati...</p>
+                </div>
+
+                <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover table-striped table-sm caption-top sticky-header" id="resultsTable">
+                        <caption id="resultsCaption">Risultati: 0 richieste trovate. Limite: 50.</caption>
+                        <thead>
+                            <tr>
+                                <th data-field="RichiestaFinanziamentoID" class="sortable">ID</th>
+                                <th data-field="Eta" class="sortable">Età</th>
+                                <th data-field="Sesso" class="sortable">Sesso</th>
+                                <th data-field="TitoloStudio" class="sortable">Titolo Studio</th>
+                                <th data-field="RedditoLordoUltimoAnno" class="sortable text-end">Reddito (€)</th>
+                                <th data-field="AnniEsperienzaLavorativa" class="sortable text-center">Esp. Lav.</th>
+                                <th data-field="InformazioniImmobile" class="sortable">Immobile</th>
+                                <th data-field="ImportoRichiesto" class="sortable text-end">Importo (€)</th>
+                                <th data-field="ScopoFinanziamento" class="sortable">Scopo</th>
+                                <th data-field="TassoInteresseFinanziamento" class="sortable text-end">Tasso (%)</th>
+                                <th data-field="ImportoRichiestoDivisoReddito" class="sortable text-end">Imp./Red.</th>
+                                <th data-field="DurataDellaStoriaCreditiziaInAnni" class="sortable text-center">Stor. Cred. (anni)</th>
+                                <th data-field="AffidabilitàCreditizia" class="sortable text-center">Affidab. Cred.</th>
+                                <th data-field="InadempienzeFinanziamentiPrecedenti" class="sortable text-center">Inademp. Prec.</th>
+                                <th data-field="ProbabilitaFinanziamentoApprovato" class="sortable text-center">Prob. Approv. (%)</th>
+                                <th class="text-center">Esito</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="paginationDiv" class="mt-3 d-flex justify-content-between align-items-center">
+                    <!-- Pagination controls will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let sortField = 'RichiestaFinanziamentoID';
+let sortDir = 'asc';
+let currentData = [];
+let limit = 50;
+const defaultLimit = 50;
+
+function buildQueryString(form) {
+    const params = new URLSearchParams();
+    for (const el of form.elements) {
+        if (el.name && el.value) {
+            if ((el.name.endsWith('_min') || el.name.endsWith('_max')) && el.name === 'ProbabilitaFinanziamentoApprovato_min' || el.name === 'ProbabilitaFinanziamentoApprovato_max') {
+                 // Convert percentage to 0-1 scale for backend if it's for probability
+                params.append(el.name, parseFloat(el.value) / 100);
+            } else {
+                params.append(el.name, el.value);
+            }
+        }
+    }
+    return params.toString() ? "?" + params.toString() : "";
+}
+
+function renderTable(dataToRender) {
+    const tbody = document.querySelector('#resultsTable tbody');
+    tbody.innerHTML = ""; // Clear existing rows
+    if (!dataToRender || dataToRender.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-4">Nessuna richiesta trovata per i filtri selezionati.</td></tr>';
+        return;
+    }
+    dataToRender.forEach(row => {
+        const probApprovazione = (row.ProbabilitaFinanziamentoApprovato * 100).toFixed(2);
+        const esito = row.ProbabilitaFinanziamentoApprovato > 0.5 ? '<span class="badge badge-approvato">Approvato</span>' : '<span class="badge badge-rifiutato">Rifiutato</span>';
+        tbody.innerHTML += `
+            <tr>
+                <td>${row.RichiestaFinanziamentoID}</td>
+                <td class="text-center">${row.Eta}</td>
+                <td class="text-center">${row.Sesso}</td>
+                <td>${row.TitoloStudio}</td>
+                <td class="text-end">${row.RedditoLordoUltimoAnno.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 })}</td>
+                <td class="text-center">${row.AnniEsperienzaLavorativa}</td>
+                <td>${row.InformazioniImmobile}</td>
+                <td class="text-end">${row.ImportoRichiesto.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 })}</td>
+                <td>${row.ScopoFinanziamento}</td>
+                <td class="text-end">${row.TassoInteresseFinanziamento.toFixed(2)}%</td>
+                <td class="text-end">${row.ImportoRichiestoDivisoReddito.toFixed(4)}</td>
+                <td class="text-center">${row.DurataDellaStoriaCreditiziaInAnni}</td>
+                <td class="text-center">${row.AffidabilitàCreditizia}</td>
+                <td class="text-center">${row.InadempienzeFinanziamentiPrecedenti}</td>
+                <td class="text-center">${probApprovazione}%</td>
+                <td class="text-center">${esito}</td>
+            </tr>
+        `;
+    });
+}
+
+function updateSortIcons() {
+    document.querySelectorAll('#resultsTable th.sortable').forEach(th => {
+        th.innerHTML = th.textContent; // Remove existing icons
+        const field = th.dataset.field;
+        let iconClass = 'fas fa-sort';
+        if (field === sortField) {
+            iconClass = sortDir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+        }
+        th.insertAdjacentHTML('beforeend', ` <i class="${iconClass}"></i>`);
+    });
+}
+
+function sortData(field) {
+    if (sortField === field) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortField = field;
+        sortDir = 'asc';
+    }
+    currentData.sort((a, b) => {
+        let valA = a[field];
+        let valB = b[field];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+    });
+    renderTable(currentData);
+    updateSortIcons();
+}
+
+function renderPagination(totalResults) {
+    const paginationDiv = document.getElementById('paginationDiv');
+    const resultsCaption = document.getElementById('resultsCaption');
+    
+    resultsCaption.textContent = `Risultati: ${totalResults} ${totalResults === 1 ? 'richiesta trovata' : 'richieste trovate'}. Limite: ${limit === 99999 ? 'Max' : limit}.`;
+
+    // Always render the limit selector
+    paginationDiv.innerHTML = `
+        <div>
+            <label for="limitSelect" class="form-label me-2">Mostra:</label>
+            <select id="limitSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                <option value="50" ${limit === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${limit === 100 ? 'selected' : ''}>100</option>
+                <option value="250" ${limit === 250 ? 'selected' : ''}>250</option>
+                <option value="99999" ${limit === 99999 ? 'selected' : ''}>Tutti</option>
+            </select>
+        </div>
+        <small class="text-muted">${totalResults} risultati totali</small>
+    `;
+    document.getElementById('limitSelect').addEventListener('change', function(){
+        limit = parseInt(this.value);
+        fetchResults();
+    });
+}
+
+async function fetchResults() {
+    const form = document.getElementById('filterForm');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resultsTable = document.getElementById('resultsTable');
+    const tbody = resultsTable.querySelector('tbody');
+    const resultsCaption = document.getElementById('resultsCaption');
+
+    loadingSpinner.style.display = 'block';
+    resultsTable.style.display = 'none';
+    tbody.innerHTML = ''; // Clear table before loading
+    resultsCaption.textContent = 'Caricamento...';
+
+    let qs = buildQueryString(form);
+    qs += (qs ? '&' : '?') + 'limit=' + limit; // Add limit to actual API call
+    
+    try {
+        const response = await fetch('/api/richieste' + qs);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Errore dal server: ${response.statusText}`);
+        }
+        currentData = await response.json();
+        renderTable(currentData);
+        renderPagination(currentData.length); // This might be total from server if pagination is server-side
+                                         // For now, it's the length of returned data.
+        updateSortIcons();
+    } catch (error) {
+        console.error("Errore nel recupero richieste:", error);
+        tbody.innerHTML = `<tr><td colspan="16" class="text-center py-4 text-danger">Errore nel caricamento dei dati: ${error.message}</td></tr>`;
+        resultsCaption.textContent = 'Errore nel caricamento.';
+    } finally {
+        loadingSpinner.style.display = 'none';
+        resultsTable.style.display = 'table';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.classList.add('loaded'); // Apply 'loaded' class to trigger fade-in
+
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetchResults();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        document.getElementById('filterForm').reset();
+        // Reset select pickers to their placeholder
+        Array.from(document.getElementById('filterForm').querySelectorAll('select')).forEach(sel => sel.selectedIndex = 0);
+        limit = defaultLimit; // Reset limit to default
+        sortField = 'RichiestaFinanziamentoID'; // Reset sort
+        sortDir = 'asc';
+        fetchResults();
+    });
+
+    const exportHandler = (format) => {
+        const form = document.getElementById('filterForm');
+        let qs = buildQueryString(form);
+        // Remove limit for export, we want all filtered data
+        const params = new URLSearchParams(qs.startsWith('?') ? qs.substring(1) : qs);
+        params.delete('limit'); 
+        window.location = `/api/richieste/export?format=${format}` + (params.toString() ? '&' + params.toString() : '');
+    };
+
+    document.getElementById('exportCsv').addEventListener('click', () => exportHandler('csv'));
+    document.getElementById('exportExcel').addEventListener('click', () => exportHandler('excel'));
+    document.getElementById('exportJson').addEventListener('click', () => exportHandler('json'));
+
+    document.querySelectorAll('#resultsTable th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            sortData(th.dataset.field);
+        });
+    });
+
+    fetchResults(); // Initial load
+});
+</script>
+</body>
+</html>

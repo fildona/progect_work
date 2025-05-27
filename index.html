@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Richiesta Finanziamento</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            /* margin: 2em; */ /* Margin now handled by Bootstrap container */
+            background-color: #f8f9fa; /* Light gray background for the page */
+        }
+        .card {
+            background-color: #ffffff; /* White background for the card */
+        }
+        /* #result { margin-top: 2em; font-weight: bold; } */ /* Handled by Bootstrap */
+    </style>
+</head>
+<body>
+    <div class="container mt-5 mb-5">  
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h1 class="mb-0 h4">Richiesta di Finanziamento</h1>
+            </div>
+            <div class="card-body">
+                <form id="finanziamentoForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="importo" class="form-label">Importo richiesto:</label>
+                                <input type="number" class="form-control" id="importo" name="importo" required step="100" min="500" max="100000">
+                            </div>
+                            <div class="mb-3">
+                                <label for="eta" class="form-label">Età richiedente:</label>
+                                <input type="number" class="form-control" id="eta" name="eta" required min="18" max="99">
+                            </div>
+                            <div class="mb-3">
+                                <label for="reddito" class="form-label">Reddito annuo:</label>
+                                <input type="number" class="form-control" id="reddito" name="reddito" required step="500" min="0" max="10000000">
+                            </div>
+                            <div class="mb-3">
+                                <label for="storia_creditizia" class="form-label">Durata storia creditizia (anni):</label>
+                                <input type="number" class="form-control" id="storia_creditizia" name="storia_creditizia" required min="1" max="50">
+                            </div>
+                            <div class="mb-3">
+                                <label for="esperienza" class="form-label">Anni esperienza lavorativa:</label>
+                                <input type="number" class="form-control" id="esperienza" name="esperienza" required min="0" max="60">
+                            </div>
+                             <div class="mb-3">
+                                <label for="tasso" class="form-label">Tasso interesse finanziamento (%):</label>
+                                <input type="number" class="form-control" id="tasso" name="tasso" required step="0.1" min="0.5" max="25">
+                            </div>
+                        </div>
+                        <div class="col-md-6"> 
+                            <div class="mb-3">
+                                <label for="affidabilita" class="form-label">Affidabilità creditizia:</label>
+                                <input type="number" class="form-control" id="affidabilita" name="affidabilita" required min="300" max="850">
+                            </div>
+                            <div class="mb-3">
+                                <label for="sesso" class="form-label">Sesso:</label>
+                                <select class="form-select" id="sesso" name="sesso" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="M">M</option>
+                                    <option value="F">F</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="titolo_studio" class="form-label">Titolo di studio:</label>
+                                <select class="form-select" id="titolo_studio" name="titolo_studio" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="Diploma">Diploma</option>
+                                    <option value="Laurea">Laurea</option>
+                                    <option value="Dottorato di ricerca">Dottorato di ricerca</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="immobile" class="form-label">Informazioni immobile:</label>
+                                <select class="form-select" id="immobile" name="immobile" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="Affitto">Affitto</option>
+                                    <option value="ProprietàMutuoEstinto">Proprietà Mutuo Estinto</option>
+                                    <option value="ProprietàMutuoDaEstinguere">Proprietà Mutuo Da Estinguere</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="scopo" class="form-label">Scopo finanziamento:</label>
+                                <select class="form-select" id="scopo" name="scopo" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="Personale">Personale</option>
+                                    <option value="Formazione">Formazione</option>
+                                    <option value="Medico">Medico</option>
+                                    <option value="InizioAttivitaImprenditoriale">Inizio Attività Imprenditoriale</option>
+                                    <option value="RistrutturazioneCasa">Ristrutturazione Casa</option>
+                                    <option value="RistrutturazioneAltriDebiti">Ristrutturazione Altri Debiti</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="inadempienze" class="form-label">Inadempienze finanziamenti precedenti:</label>
+                                <select class="form-select" id="inadempienze" name="inadempienze" required>
+                                     <option value="" disabled selected>Seleziona...</option>
+                                    <option value="SI">SI</option>
+                                    <option value="NO">NO</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="mb-3">
+                        <label for="importo_diviso_reddito" class="form-label">Importo richiesto diviso reddito:</label>
+                        <input type="number" class="form-control" name="importo_diviso_reddito" id="importo_diviso_reddito" readonly step="0.0001">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Invia richiesta</button>        </form>
+                <div id="result" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle (Popper.js and Bootstrap JS) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('finanziamentoForm').addEventListener('input', function() {
+            const importo = parseFloat(this.importo.value) || 0;
+            const reddito = parseFloat(this.reddito.value) || 0;
+            const rapporto = (reddito > 0) ? (importo / reddito) : 0;
+            document.getElementById('importo_diviso_reddito').value = rapporto.toFixed(4);
+        });
+
+        document.getElementById('finanziamentoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                ImportoRichiesto: parseFloat(form.importo.value),
+                Eta: parseInt(form.eta.value),
+                RedditoLordoUltimoAnno: parseFloat(form.reddito.value),
+                DurataDellaStoriaCreditiziaInAnni: parseInt(form.storia_creditizia.value),
+                AnniEsperienzaLavorativa: parseInt(form.esperienza.value),
+                TassoInteresseFinanziamento: parseFloat(form.tasso.value),
+                AffidabilitàCreditizia: parseInt(form.affidabilita.value),
+                Sesso: form.sesso.value,
+                TitoloStudio: form.titolo_studio.value,
+                InformazioniImmobile: form.immobile.value,
+                ScopoFinanziamento: form.scopo.value,
+                InadempienzeFinanziamentiPrecedenti: form.inadempienze.value,
+                ImportoRichiestoDivisoReddito: parseFloat(form.importo_diviso_reddito.value)
+            };
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'mt-4'; // Reset classes
+
+            try {
+                const response = await fetch('http://localhost:5000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: 'Errore sconosciuto dal server' }));
+                    throw new Error(errorData.error || `Errore nella richiesta: ${response.statusText}`);
+                }
+                const result = await response.json();
+                
+                let alertClass = result.classe_prevista === "SI" ? 'alert-success' : 'alert-danger';
+                resultDiv.className = `mt-4 alert ${alertClass}`;
+                resultDiv.innerHTML = 
+                    `Probabilità approvazione: <b>${(result.probabilita_approvazione * 100).toFixed(2)}%</b><br>
+                    Esito: <b>${result.classe_prevista === "SI" ? 'Approvato' : 'Rifiutato'}</b>`;
+            } catch (err) {
+                resultDiv.className = 'mt-4 alert alert-warning';
+                resultDiv.textContent = 'Errore: ' + err.message;
+            }
+        });
+    </script>
+</body>
+</html>

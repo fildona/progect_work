@@ -1,0 +1,46 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">SaaS Finance®</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link{% if request.path == url_for('index') %} active fw-semibold{% endif %}" href="{{ url_for('index') }}">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if request.path == url_for('importa_html') %} active fw-semibold{% endif %}" href="{{ url_for('importa_html') }}">Importa Dati</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if request.path == url_for('richieste_html') %} active fw-semibold{% endif %}" href="{{ url_for('richieste_html') }}">Visualizza Richieste</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if request.path == url_for('statistiche_html') %} active fw-semibold{% endif %}" href="{{ url_for('statistiche_html') }}">Statistiche</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<style>
+  .navbar.bg-dark {
+    background-color: #343a40 !important; /* Darker, more standard bootstrap dark */
+    font-family: 'DM Sans', sans-serif; /* Added DM Sans to navbar */
+  }
+  .navbar-brand {
+    font-size: 1.5rem; /* Slightly larger brand name */
+  }
+  .nav-link {
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    border-radius: 0.25rem;
+  }
+  .nav-link:hover, .nav-link.active {
+    color: #ffffff !important;
+    background-color: #495057; /* Darker highlight for hover/active */
+  }
+  .nav-link.active {
+    font-weight: 600;
+  }
+</style>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Richiesta Finanziamento - FinPredix</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #eef2f5; /* Softer background */
+            color: #333;
+            opacity: 0; /* Initial state for fade-in */
+            transition: opacity 0.5s ease-in-out;
+        }
+        body.loaded { /* Class to trigger fade-in */
+            opacity: 1;
+        }
+        .card {
+            border: none; /* Remove default card border */
+            border-radius: 0.75rem; /* Softer corners */
+            transition: box-shadow 0.3s ease-out; /* Only transition box-shadow */
+        }
+        .card:hover {
+            /* transform: translateY(-5px); */ /* Removed translateY */
+            box-shadow: 0 0.4rem 0.8rem rgba(0,0,0,0.08); /* Softer shadow */
+        }
+        .card-header {
+            background-color: #0056b3; /* A deep, trustworthy blue */
+            color: white;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .card-header h1 {
+            font-size: 1.75rem; /* Slightly larger title */
+            font-weight: 600;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #555;
+        }
+        .form-control, .form-select {
+            border-radius: 0.375rem; /* Consistent rounded corners */
+            border: 1px solid #ced4da;
+            transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #0056b3;
+            box-shadow: 0 0 0 0.25rem rgba(0, 86, 179, 0.25);
+        }
+        .btn-primary {
+            background-color: #0069d9; /* Slightly brighter blue for primary action */
+            border-color: #0062cc;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            transition: background-color .15s ease-in-out, border-color .15s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+             font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+        }
+         .btn-outline-secondary {
+            border-color: #6c757d;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #6c757d;
+            color: white;
+        }
+        #result.alert {
+            border-radius: 0.375rem;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .alert-success {
+            background-color: #d1e7dd;
+            border-color: #badbcc;
+            color: #0f5132;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #f5c2c7;
+            color: #842029;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+            color: #664d03;
+        }
+        hr {
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container mt-4 mb-5">
+        <div class="card shadow-lg">
+            <div class="card-header text-center">
+                <h1 class="mb-0"><i class="fas fa-landmark me-2"></i>Modulo Richiesta Finanziamento</h1>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <form id="finanziamentoForm">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="importo" class="form-label"><i class="fas fa-coins me-2"></i>Importo richiesto (€):</label>
+                                <input type="number" class="form-control form-control-lg" id="importo" name="importo" required step="1" min="500" max="100000" placeholder="Es. 15000">
+                            </div>
+                            <div class="mb-3">
+                                <label for="eta" class="form-label"><i class="fas fa-birthday-cake me-2"></i>Età richiedente:</label>
+                                <input type="number" class="form-control form-control-lg" id="eta" name="eta" required min="18" max="99" placeholder="Es. 35">
+                            </div>
+                            <div class="mb-3">
+                                <label for="reddito" class="form-label"><i class="fas fa-wallet me-2"></i>Reddito annuo lordo (€):</label>
+                                <input type="number" class="form-control form-control-lg" id="reddito" name="reddito" required step="1" min="0" max="10000000" placeholder="Es. 30000">
+                            </div>
+                            <div class="mb-3">
+                                <label for="storia_creditizia" class="form-label"><i class="fas fa-history me-2"></i>Durata storia creditizia (anni):</label>
+                                <input type="number" class="form-control form-control-lg" id="storia_creditizia" name="storia_creditizia" required min="0" max="50" placeholder="Es. 5">
+                            </div>
+                            <div class="mb-3">
+                                <label for="esperienza" class="form-label"><i class="fas fa-briefcase me-2"></i>Anni esperienza lavorativa:</label>
+                                <input type="number" class="form-control form-control-lg" id="esperienza" name="esperienza" required min="0" max="60" placeholder="Es. 10">
+                            </div>
+                             <div class="mb-3">
+                                <label for="tasso" class="form-label"><i class="fas fa-percentage me-2"></i>Tasso interesse proposto (%):</label>
+                                <input type="number" class="form-control form-control-lg" id="tasso" name="tasso" required step="0.01" min="0.1" max="30" placeholder="Es. 4.5">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="affidabilita" class="form-label"><i class="fas fa-shield-alt me-2"></i>Affidabilità creditizia (punteggio):</label>
+                                <input type="number" class="form-control form-control-lg" id="affidabilita" name="affidabilita" required min="300" max="850" placeholder="Es. 720">
+                            </div>
+                            <div class="mb-3">
+                                <label for="sesso" class="form-label"><i class="fas fa-venus-mars me-2"></i>Sesso:</label>
+                                <select class="form-select form-select-lg" id="sesso" name="sesso" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="M">Maschile</option>
+                                    <option value="F">Femminile</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="titolo_studio" class="form-label"><i class="fas fa-graduation-cap me-2"></i>Titolo di studio:</label>
+                                <select class="form-select form-select-lg" id="titolo_studio" name="titolo_studio" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="Licenza media">Licenza Media</option>
+                                    <option value="Diploma">Diploma</option>
+                                    <option value="Laurea">Laurea</option>
+                                    <option value="Dottorato di ricerca">Dottorato/Master</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="immobile" class="form-label"><i class="fas fa-home me-2"></i>Situazione immobiliare:</label>
+                                <select class="form-select form-select-lg" id="immobile" name="immobile" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="Affitto">In Affitto</option>
+                                    <option value="ProprietàMutuoEstinto">Proprietà (Mutuo Estinto)</option>
+                                    <option value="ProprietàMutuoDaEstinguere">Proprietà (Mutuo in Corso)</option>
+                                    <option value="Altro">Altro</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="scopo" class="form-label"><i class="fas fa-bullseye me-2"></i>Scopo del finanziamento:</label>
+                                <select class="form-select form-select-lg" id="scopo" name="scopo" required>
+                                    <option value="" disabled selected>Seleziona...</option>
+                                    <option value="Personale">Personale</option>
+                                    <option value="Formazione">Formazione</option>
+                                    <option value="Medico">Spese Mediche</option>
+                                    <option value="InizioAttivitaImprenditoriale">Avvio Attività</option>
+                                    <option value="RistrutturazioneCasa">Ristrutturazione Casa</option>
+                                    <option value="RistrutturazioneAltriDebiti">Consolidamento Debiti</option>
+                                    <option value="Altro">Altro</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="inadempienze" class="form-label"><i class="fas fa-exclamation-triangle me-2"></i>Inadempienze precedenti:</label>
+                                <select class="form-select form-select-lg" id="inadempienze" name="inadempienze" required>
+                                     <option value="" disabled selected>Seleziona...</option>
+                                    <option value="NO">No</option>
+                                    <option value="SI">Sì</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="mb-4">
+                        <label for="importo_diviso_reddito" class="form-label"><i class="fas fa-calculator me-2"></i>Rapporto Importo/Reddito:</label>
+                        <input type="number" class="form-control form-control-lg" name="importo_diviso_reddito" id="importo_diviso_reddito" readonly step="0.0001" placeholder="Calcolato automaticamente...">
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-between mb-4">
+                        <button type="button" class="btn btn-outline-secondary btn-lg" id="resetBtn"><i class="fas fa-undo me-2"></i>Reset Campi</button>
+                        <button type="button" class="btn btn-secondary btn-lg" id="randomBtn"><i class="fas fa-random me-2"></i>Compila Casuale</button>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane me-2"></i>Invia Richiesta</button>
+                    </div>
+                </form>
+                <div id="result" class="mt-4 p-3 text-center" style="font-size: 1.1rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.classList.add('loaded');
+
+    const finanzForm = document.getElementById('finanziamentoForm');
+    const resultDiv = document.getElementById('result');
+    const randomBtn = document.getElementById('randomBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    if (finanzForm) {
+        finanzForm.addEventListener('input', function() {
+            const importoInput = this.importo.value;
+            const redditoInput = this.reddito.value;
+            const importoDivisoRedditoEl = document.getElementById('importo_diviso_reddito');
+
+            const importo = parseFloat(importoInput);
+            const reddito = parseFloat(redditoInput);
+
+            if (!isNaN(importo) && !isNaN(reddito) && reddito > 0) {
+                const rapporto = importo / reddito;
+                if (isFinite(rapporto)) {
+                    importoDivisoRedditoEl.value = rapporto.toFixed(4);
+                } else {
+                    importoDivisoRedditoEl.value = "";
+                    console.warn("Rapporto is not finite (Infinity or -Infinity)", rapporto);
+                }
+            } else {
+                importoDivisoRedditoEl.value = "";
+                if (isNaN(importo)) console.warn("Importo is NaN from input:", importoInput);
+                if (isNaN(reddito)) console.warn("Reddito is NaN from input:", redditoInput);
+                if (reddito === 0) console.warn("Reddito is 0, division by zero prevented.");
+            }
+        });
+
+        finanzForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); 
+            console.log('Form submission initiated, default prevented.');
+
+            if (!resultDiv) {
+                console.error("Result div (#result) not found!");
+                return;
+            }
+
+            resultDiv.className = 'mt-4 p-3 text-center';
+            resultDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Invio in corso...</p>';
+
+            const data = {
+                ImportoRichiesto: parseFloat(finanzForm.importo.value),
+                Eta: parseInt(finanzForm.eta.value),
+                RedditoLordoUltimoAnno: parseFloat(finanzForm.reddito.value),
+                DurataDellaStoriaCreditiziaInAnni: parseInt(finanzForm.storia_creditizia.value),
+                AnniEsperienzaLavorativa: parseInt(finanzForm.esperienza.value),
+                TassoInteresseFinanziamento: parseFloat(finanzForm.tasso.value),
+                AffidabilitàCreditizia: parseInt(finanzForm.affidabilita.value),
+                Sesso: finanzForm.sesso.value,
+                TitoloStudio: finanzForm.titolo_studio.value,
+                InformazioniImmobile: finanzForm.immobile.value,
+                ScopoFinanziamento: finanzForm.scopo.value,
+                InadempienzeFinanziamentiPrecedenti: finanzForm.inadempienze.value,
+                ImportoRichiestoDivisoReddito: parseFloat(finanzForm.importo_diviso_reddito.value)
+            };
+            
+            console.log("Data to be sent:", data);
+
+            let hasNaN = false;
+            for (const key in data) {
+                if (typeof data[key] === 'number' && isNaN(data[key])) {
+                    console.error(`Data field ${key} is NaN. Value: '${finanzForm[key] ? finanzForm[key].value : 'N/A'}'. This will likely cause an error or incorrect prediction.`);
+                    hasNaN = true;
+                }
+            }
+
+            if(hasNaN){
+                resultDiv.className = 'mt-4 p-3 alert alert-warning d-flex flex-column align-items-center';
+                resultDiv.innerHTML = 
+                    `<i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h4 class="alert-heading">Errore nei Dati!</h4>
+                    <p>Uno o più campi numerici contengono valori non validi. Controlla i campi e riprova.</p>`;
+                return;
+            }
+
+            try {
+                const response = await fetch('/predict', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log("Raw response status:", response.status);
+                const resultText = await response.text();
+                let apiResult;
+
+                try {
+                    apiResult = JSON.parse(resultText);
+                    console.log("Parsed API Result:", apiResult);
+                } catch (parseError) {
+                    console.error("Error parsing JSON response:", parseError, "Raw response text:", resultText);
+                    resultDiv.className = 'mt-4 p-3 alert alert-danger text-center';
+                    resultDiv.innerHTML = "Errore nella risposta del server (formato non JSON). Controlla la console.";
+                    throw new Error("Risposta non valida dal server (formato non JSON).");
+                }
+
+                if (!response.ok) {
+                    console.error("Server returned an error:", apiResult.error, "Status:", response.status);
+                    throw new Error(apiResult.error || `Errore nella richiesta: ${response.statusText} (Status: ${response.status})`);
+                }
+                
+                let alertClass = apiResult.classe_prevista === "SI" ? 'alert-success' : 'alert-danger';
+                let iconClass = apiResult.classe_prevista === "SI" ? 'fas fa-check-circle' : 'fas fa-times-circle';
+                let esitoText = apiResult.classe_prevista === "SI" ? 'Approvato' : 'Rifiutato';
+
+                resultDiv.className = `mt-4 p-3 alert ${alertClass} d-flex flex-column align-items-center`;
+                resultDiv.innerHTML = 
+                    `<i class="${iconClass} fa-3x mb-3"></i>
+                    <h4 class="alert-heading">${esitoText}!</h4>
+                    <p>Probabilità di approvazione: <b>${(apiResult.probabilita_approvazione * 100).toFixed(2)}%</b></p>`;
+
+            } catch (err) {
+                console.error("Error during fetch or processing:", err);
+                if (resultDiv.innerHTML.includes('spinner-border')) {
+                    resultDiv.className = 'mt-4 p-3 alert alert-warning d-flex flex-column align-items-center';
+                    resultDiv.innerHTML = 
+                        `<i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                        <h4 class="alert-heading">Errore!</h4>
+                        <p>${err.message}</p>`;
+                }
+            }
+        });
+
+    } else {
+        console.error("Form #finanziamentoForm not found for event listeners!");
+    }
+
+    if (randomBtn) {
+        randomBtn.addEventListener('click', function() {
+            if (!finanzForm) {
+                console.error("#randomBtn: finanzForm not found"); 
+                return;
+            }
+            const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            const randomFloat = (min, max, decimals = 2) => {
+                const factor = Math.pow(10, decimals);
+                const val = Math.random() * (max - min) + min;
+                return (Math.round(val * factor) / factor).toFixed(decimals);
+            };
+            
+            finanzForm.importo.value = randomInt(500, 100000);
+            finanzForm.eta.value = randomInt(18, 80);
+            finanzForm.reddito.value = randomInt(10000, 150000);
+            finanzForm.storia_creditizia.value = randomInt(1, 30);
+            let tempEta = parseInt(finanzForm.eta.value) || 18;
+            finanzForm.esperienza.value = randomInt(0, tempEta - 18 > 0 ? tempEta - 18 : 0);
+            finanzForm.tasso.value = randomFloat(0.5, 25, 2);
+            finanzForm.affidabilita.value = randomInt(300, 850);
+            finanzForm.sesso.value = Math.random() < 0.5 ? "M" : "F";
+            const titoli = ["Licenza media", "Diploma", "Laurea", "Dottorato di ricerca"];
+            finanzForm.titolo_studio.value = titoli[randomInt(0, titoli.length - 1)];
+            const immobili = ["Affitto", "ProprietàMutuoEstinto", "ProprietàMutuoDaEstinguere", "Altro"];
+            finanzForm.immobile.value = immobili[randomInt(0, immobili.length - 1)];
+            const scopi = ["Personale", "Formazione", "Medico", "InizioAttivitaImprenditoriale", "RistrutturazioneCasa", "RistrutturazioneAltriDebiti", "Altro"];
+            finanzForm.scopo.value = scopi[randomInt(0, scopi.length - 1)];
+            finanzForm.inadempienze.value = Math.random() < 0.2 ? "SI" : "NO";
+            
+            finanzForm.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    } else {
+        console.error("Button #randomBtn not found!");
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (!finanzForm) {
+                console.error("#resetBtn: finanzForm not found"); 
+                return;
+            }
+            finanzForm.reset();
+            Array.from(finanzForm.querySelectorAll('select')).forEach(sel => sel.selectedIndex = 0);
+            const importoDivisoRedditoEl = document.getElementById('importo_diviso_reddito');
+            if(importoDivisoRedditoEl) importoDivisoRedditoEl.value = "";
+            
+            if (resultDiv) {
+                resultDiv.className = 'mt-4 p-3 text-center';
+                resultDiv.innerHTML = '';
+            }
+        });
+    } else {
+        console.error("Button #resetBtn not found!");
+    }
+});
+    </script>
+</body>
+</html>
