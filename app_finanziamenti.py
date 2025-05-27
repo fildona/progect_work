@@ -4,7 +4,10 @@ import joblib
 import numpy as np
 import os
 from flask_cors import CORS
-import logging
+import requests
+from pymongo import MongoClient
+
+print("--- Script Iniziato ---")
 
 # --- Configurazione Nomi File Modello ---
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -12,226 +15,297 @@ MODEL_FILENAME = os.path.join(MODEL_DIR, 'GradientBoosting_model.pkl')
 SCALER_FILENAME = os.path.join(MODEL_DIR, 'loan_scaler.joblib')
 MODEL_COLUMNS_FILENAME = os.path.join(MODEL_DIR, 'model_columns.joblib')
 COLS_TO_SCALE_FILENAME = os.path.join(MODEL_DIR, 'cols_to_scale.joblib')
-TRAINING_BOUNDS_FILENAME = os.path.join(MODEL_DIR, 'training_bounds.joblib') # Nuovo file
+TRAINING_BOUNDS_FILENAME = os.path.join(MODEL_DIR, 'training_bounds.joblib')
 
-# --- Caricamento Modello, Scaler, Colonne e Limiti di Training ---
-model = None
-scaler = None
-model_columns = None
-cols_to_scale = None
-training_bounds = None # Nuovo
-
+# --- Caricamento Modello, Scaler, Colonne ---
+print("Caricamento componenti modello...")
+model, scaler, model_columns, cols_to_scale, training_bounds = None, None, [], [], None
 try:
     model = joblib.load(MODEL_FILENAME)
-    print(f"Modello caricato da {MODEL_FILENAME}")
-except FileNotFoundError:
-    print(f"ERRORE CRITICO: File del modello '{MODEL_FILENAME}' non trovato.")
-except Exception as e:
-    print(f"ERRORE CRITICO durante il caricamento del modello: {e}")
-
-try:
+    print(f"OK: Modello caricato da {MODEL_FILENAME}")
     scaler = joblib.load(SCALER_FILENAME)
-    print(f"Scaler caricato da {SCALER_FILENAME}")
-except FileNotFoundError:
-    print(f"ERRORE CRITICO: File dello scaler '{SCALER_FILENAME}' non trovato.")
-except Exception as e:
-    print(f"ERRORE CRITICO durante il caricamento dello scaler: {e}")
-
-try:
+    print(f"OK: Scaler caricato da {SCALER_FILENAME}")
     model_columns = joblib.load(MODEL_COLUMNS_FILENAME)
-    print(f"Colonne del modello caricate da {MODEL_COLUMNS_FILENAME}")
-except FileNotFoundError:
-    print(f"ERRORE CRITICO: File delle colonne del modello '{MODEL_COLUMNS_FILENAME}' non trovato.")
-except Exception as e:
-    print(f"ERRORE CRITICO durante il caricamento delle colonne del modello: {e}")
-
-try:
+    print(f"OK: Colonne modello caricate da {MODEL_COLUMNS_FILENAME} (Tot: {len(model_columns)})")
+    # print(f"   Colonne modello attese: {model_columns}") # Decommenta per debug
     cols_to_scale = joblib.load(COLS_TO_SCALE_FILENAME)
-    print(f"Colonne da scalare caricate da {COLS_TO_SCALE_FILENAME}")
-except FileNotFoundError:
-    print(f"ERRORE CRITICO: File delle colonne da scalare '{COLS_TO_SCALE_FILENAME}' non trovato.")
-except Exception as e:
-    print(f"ERRORE CRITICO durante il caricamento delle colonne da scalare: {e}")
+    print(f"OK: Colonne da scalare caricate da {COLS_TO_SCALE_FILENAME}")
+    # print(f"   Colonne da scalare attese: {cols_to_scale}") # Decommenta per debug
+except Exception as e_load:
+    print(f"!!! ERRORE CRITICO durante il caricamento dei file modello/scaler: {e_load}")
+    print("!!! L'applicazione potrebbe non funzionare correttamente.")
 
 try:
     training_bounds = joblib.load(TRAINING_BOUNDS_FILENAME)
-    print(f"Limiti del training set caricati da {TRAINING_BOUNDS_FILENAME}")
+    print(f"OK: Limiti training caricati da {TRAINING_BOUNDS_FILENAME}")
 except FileNotFoundError:
-    print(f"ATTENZIONE: File dei limiti del training set '{TRAINING_BOUNDS_FILENAME}' non trovato. Il clipping non sarà basato sui limiti esatti del training.")
-except Exception as e:
-    print(f"ERRORE durante il caricamento dei limiti del training set: {e}")
+    training_bounds = None
+    print(f"INFO: File dei limiti training '{TRAINING_BOUNDS_FILENAME}' non trovato. Clipping (se usato) sarà disabilitato.")
+except Exception as e_bounds:
+    training_bounds = None
+    print(f"ATTENZIONE: Errore caricamento limiti training '{TRAINING_BOUNDS_FILENAME}': {e_bounds}. Clipping disabilitato.")
+print("--- Caricamento componenti modello completato ---")
 
 
 app = Flask(__name__)
 CORS(app)
 
-# Configura il logger di Flask per essere più verboso
-app.logger.setLevel(logging.DEBUG)
-if not app.logger.handlers: # Evita di aggiungere handler multipli se Flask si riavvia
-    stream_handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
-    stream_handler.setFormatter(formatter)
-    app.logger.addHandler(stream_handler)
+# --- Configurazione MongoDB ---
+# !!! MODIFICA CON LA TUA PASSWORD REALE QUI !!!
+
+MONGO_URI = "mongodb+srv://esame:esame@esame.ynuzlxk.mongodb.net/?retryWrites=true&w=majority&appName=Esame"
+DB_NAME = "finanziamenti_db_final_test" # Scegli un nome per il tuo DB
+COLLECTION_NAME = "richieste_final_test" # Scegli un nome per la tua collezione
+
+print(f"\n--- Configurazione MongoDB ---")
+client = None
+richieste_collection = None
+try:
+    print(f"Tentativo di connessione a MongoDB Atlas...") # Non stampare l'URI completo con password in produzione
+    client = MongoClient(MONGO_URI)
+    client.admin.command('ping')
+    print("OK: Connessione a MongoDB Atlas riuscita!")
+    db = client[DB_NAME]
+    richieste_collection = db[COLLECTION_NAME]
+    # Crea indice se non esiste. background=True è utile per non bloccare l'avvio.
+    richieste_collection.create_index("RichiestaFinanziamentoID", unique=True, background=True)
+    print(f"OK: Database '{DB_NAME}', Collezione '{COLLECTION_NAME}' pronta.")
+    print("OK: Indice univoco su 'RichiestaFinanziamentoID' assicurato/creato.")
+except Exception as e_mongo_conn:
+    print(f"!!! ERRORE CRITICO DI CONNESSIONE A MONGODB: {e_mongo_conn}")
+    print("!!! L'importazione dati fallirà. Controlla URI, password, whitelist IP e `dnspython`.")
+print("--- Configurazione MongoDB completata ---\n")
 
 
-@app.route('/predict', methods=['POST'])
-def predict_loan_approval():
-    if not all([model, scaler, model_columns, cols_to_scale]): # training_bounds è opzionale per il funzionamento base
-        missing_components = []
-        if not model: missing_components.append("modello")
-        if not scaler: missing_components.append("scaler")
-        if not model_columns: missing_components.append("colonne del modello")
-        if not cols_to_scale: missing_components.append("colonne da scalare")
-        error_msg = f"Errore server: Componenti necessari non caricati ({', '.join(missing_components)})."
-        app.logger.error(error_msg)
-        return jsonify({"error": error_msg}), 500
+# --- Funzione Helper per Preprocessing e Predizione ---
+def get_prediction_for_request_simplified(id_req_debug, input_data_api_format):
+    print(f"\n--- Predizione per ID_API_FORMAT: {id_req_debug} ---")
+    if not all([model, scaler, model_columns, cols_to_scale]):
+        print(f"!!! Predizione ID {id_req_debug}: Modello o componenti essenziali non caricati. Ritorno 0.0")
+        return 0.0
+
+    # 1. Mappatura nomi API -> nomi interni e conversioni tipo base
+    data_internal_format = {
+        "Eta": float(input_data_api_format.get("eta_cliente", 0)),
+        "Sesso": str(input_data_api_format.get("sesso_cliente", "N/D")),
+        "TitoloStudio": str(input_data_api_format.get("titolo_studio_cliente", "N/D")),
+        "RedditoLordoUltimoAnno": float(input_data_api_format.get("reddito_annuo_lordo", 0)),
+        "AnniEsperienzaLavorativa": float(input_data_api_format.get("anni_esperienza_lavorativa", 0)),
+        "InformazioniImmobile": str(input_data_api_format.get("info_immobile", "N/D")),
+        "ImportoRichiesto": float(input_data_api_format.get("importo_richiesto_finanziamento", 0)),
+        "ScopoFinanziamento": str(input_data_api_format.get("scopo_finanziamento", "N/D")),
+        "TassoInteresseFinanziamento": float(input_data_api_format.get("tasso_interesse_proposto", 0)),
+        "ImportoRichiestoDivisoReddito": float(input_data_api_format.get("rapporto_importo_reddito", 999)),
+        "DurataDellaStoriaCreditiziaInAnni": float(input_data_api_format.get("durata_storia_creditizia_anni", 0)),
+        "AffidabilitàCreditizia": float(input_data_api_format.get("punteggio_affidabilita_creditizia", 300)),
+        "InadempienzeFinanziamentiPrecedenti": "SI" if input_data_api_format.get("inadempienze_pregresse") == 1 else "NO"
+    }
+    # print(f"ID {id_req_debug} - Dati MAPPATI (formato interno):\n{pd.Series(data_internal_format)}")
+
+    # 2. Clipping (se training_bounds è disponibile)
+    if training_bounds:
+        for col, limits in training_bounds.items():
+            if col in data_internal_format and pd.notna(data_internal_format[col]):
+                val = float(data_internal_format[col])
+                min_b, max_b = limits.get('min'), limits.get('max')
+                if pd.notna(min_b) and pd.notna(max_b):
+                     data_internal_format[col] = np.clip(val, min_b, max_b)
+
+    current_input_df = pd.DataFrame([data_internal_format])
+    # print(f"ID {id_req_debug} - DF Iniziale (dopo mappatura API e clipping):\n{current_input_df.T}")
+
+    # 3. Mappature (Sesso, TitoloStudio, Inadempienze)
+    map_titolo = {"Diploma": 0, "Laurea": 1, "Dottorato di ricerca": 2, "N/D": 0}
+    map_sesso = {"F": 0, "M": 1, "N/D": 0}
+    map_inad = {"NO": 0, "SI": 1}
+
+    current_input_df["TitoloStudio"] = current_input_df["TitoloStudio"].map(map_titolo).fillna(0)
+    current_input_df["Sesso"] = current_input_df["Sesso"].map(map_sesso).fillna(0)
+    current_input_df["InadempienzeFinanziamentiPrecedenti"] = current_input_df["InadempienzeFinanziamentiPrecedenti"].map(map_inad).fillna(0)
+    # print(f"ID {id_req_debug} - DF dopo mappature S,T,I:\n{current_input_df.T}")
+
+    # 4. One-Hot Encoding
+    cols_for_ohe = []
+    if "InformazioniImmobile" in current_input_df.columns: cols_for_ohe.append("InformazioniImmobile")
+    if "ScopoFinanziamento" in current_input_df.columns: cols_for_ohe.append("ScopoFinanziamento")
+    if cols_for_ohe:
+        current_input_df = pd.get_dummies(current_input_df, columns=cols_for_ohe, dummy_na=False)
+    # print(f"ID {id_req_debug} - DF dopo OHE (colonne: {current_input_df.columns.tolist()}):\n{current_input_df.T}")
+
+    # 5. Allinea colonne con quelle del modello e fillna(0) -> CRUCIALE
+    df_aligned_for_model = pd.DataFrame(columns=model_columns) # Inizia con DF con le colonne del modello
+    for col in model_columns:
+        if col in current_input_df.columns:
+            df_aligned_for_model[col] = current_input_df[col]
+    df_aligned_for_model = df_aligned_for_model.fillna(0)
+    # print(f"ID {id_req_debug} - DF Allineato a model_columns (colonne: {df_aligned_for_model.columns.tolist()}):\n{df_aligned_for_model.T}")
+
+    # 6. Assicura che tutte le colonne siano numeriche
+    for col in df_aligned_for_model.columns:
+        df_aligned_for_model[col] = pd.to_numeric(df_aligned_for_model[col], errors='coerce').fillna(0)
+    # print(f"ID {id_req_debug} - DF dopo to_numeric finale:\n{df_aligned_for_model.T}")
+
+
+    # 7. Normalizzazione
+    actual_cols_to_scale_in_df = [col for col in cols_to_scale if col in df_aligned_for_model.columns]
+    if actual_cols_to_scale_in_df:
+        # print(f"ID {id_req_debug} - Colonne DA SCALARE: {actual_cols_to_scale_in_df}")
+        # print(f"    ID {id_req_debug} - Valori PRIMA scaling:\n{df_aligned_for_model[actual_cols_to_scale_in_df].T}")
+        try:
+            # Lo scaler si aspetta float
+            df_aligned_for_model[actual_cols_to_scale_in_df] = df_aligned_for_model[actual_cols_to_scale_in_df].astype(float)
+            scaled_values = scaler.transform(df_aligned_for_model[actual_cols_to_scale_in_df])
+            df_aligned_for_model[actual_cols_to_scale_in_df] = scaled_values
+            # print(f"    ID {id_req_debug} - Valori DOPO scaling:\n{df_aligned_for_model[actual_cols_to_scale_in_df].T}")
+        except Exception as e_scale:
+            print(f"!!! ID {id_req_debug} - Errore SCALING: {e_scale}. Ritorno 0.0")
+            print(f"    Dati per lo scaler: {df_aligned_for_model[actual_cols_to_scale_in_df]}")
+            return 0.0
+    else:
+        print(f"ID {id_req_debug} - Nessuna colonna da scalare trovata in df_aligned_for_model.")
+
+
+    # 8. Predizione
+    try:
+        # Assicurati che l'input per il modello sia ESATTAMENTE df_aligned_for_model
+        # e che le sue colonne siano quelle in model_columns
+        final_input_payload = df_aligned_for_model[model_columns]
+        # print(f"ID {id_req_debug} - Input FINALE per il modello (shape: {final_input_payload.shape}, Dtypes:\n{final_input_payload.dtypes}):\n{final_input_payload.T}")
+
+        if final_input_payload.isnull().values.any():
+            print(f"!!! ID {id_req_debug} - NaN TROVATI nell'input finale del modello! Colonne con NaN:")
+            print(final_input_payload.columns[final_input_payload.isnull().any()].tolist())
+            return 0.0
+        if np.isinf(final_input_payload.to_numpy()).any(): # Converti a numpy per isinf
+            print(f"!!! ID {id_req_debug} - Valori Infiniti TROVATI nell'input finale del modello!")
+            return 0.0
+
+        probability = model.predict_proba(final_input_payload)[0, 1]
+        print(f"ID {id_req_debug} - Probabilità calcolata: {probability:.4f}")
+        return float(probability)
+    except Exception as e_predict:
+        print(f"!!! ID {id_req_debug} - Errore PREDIZIONE: {e_predict}. Ritorno 0.0")
+        print(f"    Forma dati per predizione: {final_input_payload.shape if 'final_input_payload' in locals() else 'N/A'}")
+        # print(f"    Colonne dati per predizione: {final_input_payload.columns.tolist() if 'final_input_payload' in locals() else 'N/A'}")
+        return 0.0
+
+
+# --- Endpoint per l'importazione dei dati (Parte 3) ---
+EXTERNAL_API_URL = "https://testbobphp2.altervista.org/000AiForemaProjectWork/richieste_finanziamenti.php"
+
+@app.route('/import_data', methods=['POST'])
+def import_data_route():
+    print("\n--- Endpoint /import_data chiamato ---")
+    if richieste_collection is None:
+        print("!!! /import_data: Connessione a MongoDB non disponibile!")
+        return jsonify({"message": "Errore DB: Connessione non disponibile", "imported": 0, "skipped": 0}), 503
 
     try:
-        json_data = request.get_json()
-        if not json_data:
-            app.logger.warning("Richiesta JSON vuota o malformata ricevuta.")
-            return jsonify({"error": "Richiesta JSON vuota o malformata"}), 400
+        response = requests.get(EXTERNAL_API_URL, timeout=25)
+        response.raise_for_status() # Controlla errori HTTP
+        api_data_list = response.json()
+        print(f"Ricevuti {len(api_data_list)} record dall'API esterna.")
+    except requests.exceptions.Timeout:
+        print(f"!!! Timeout chiamata API esterna: {EXTERNAL_API_URL}")
+        return jsonify({"message": "Timeout API esterna", "imported": 0, "skipped": 0}), 504
+    except requests.exceptions.RequestException as e_api:
+        print(f"!!! Errore chiamata API esterna: {e_api}")
+        return jsonify({"message": f"Errore API esterna: {str(e_api)}", "imported": 0, "skipped": 0}), 502
+    except ValueError as e_json: # Errore nel decodificare JSON
+        print(f"!!! Errore decodifica JSON da API esterna: {e_json}")
+        return jsonify({"message": "Formato risposta API esterna non valido (JSON)", "imported": 0, "skipped": 0}), 502
 
-        app.logger.debug(f"Dati JSON ricevuti: {json_data}")
+    imported_count = 0
+    skipped_count = 0
+    error_processing_count = 0
 
-        # --- Calcolo di ImportoRichiestoDivisoReddito ---
-        try:
-            importo_richiesto = float(json_data.get("ImportoRichiesto", 0))
-            reddito_lordo = float(json_data.get("RedditoLordoUltimoAnno", 0))
-            if reddito_lordo > 0:
-                rapporto = importo_richiesto / reddito_lordo
-                json_data["ImportoRichiestoDivisoReddito"] = rapporto
-                app.logger.debug(f"ImportoRichiestoDivisoReddito calcolato: {rapporto}")
-            else:
-                # Se il reddito è zero, il rapporto è problematico.
-                # Potrebbe essere 0, un valore molto alto, o NaN da gestire dopo.
-                # Il modello si aspetta un numero. Mettiamo un valore alto ma finito.
-                # Il clipping successivo dovrebbe gestirlo se training_bounds è disponibile.
-                json_data["ImportoRichiestoDivisoReddito"] = 999 # Placeholder per reddito zero, sarà clippato
-                app.logger.warning(f"Reddito Lordo è 0 o non fornito. ImportoRichiestoDivisoReddito impostato a placeholder: 999")
-        except (TypeError, ValueError) as e:
-            app.logger.error(f"Errore nel calcolo di ImportoRichiestoDivisoReddito: {e}. Impostato a placeholder 999.", exc_info=True)
-            json_data["ImportoRichiestoDivisoReddito"] = 999 # Placeholder in caso di errore
+    for item_original_api in api_data_list:
+        # !!! DEVI VERIFICARE IL NOME ESATTO DEL CAMPO ID DALL'API ESTERNA !!!
+        # Se l'API usa "RichiestaFinanziamentoID", va bene. Se usa "RichiestaFinanziamentoID", cambia qui.
+        id_api = item_original_api.get("RichiestaFinanziamentoID") # <--- VERIFICA QUESTO NOME CAMPO!
 
+        if not id_api:
+            print(f"Record API skippato, ID ('RichiestaFinanziamentoID') mancante: {item_original_api}")
+            error_processing_count += 1
+            continue
 
-        # --- Clipping dei valori basato sui limiti del training set (se disponibili) ---
-        if training_bounds:
-            app.logger.debug("Applicazione clipping basato sui limiti del training set...")
-            for col, limits in training_bounds.items():
-                if col in json_data and pd.notna(json_data[col]):
-                    try:
-                        original_value = float(json_data[col])
-                        col_min = limits.get('min')
-                        col_max = limits.get('max')
+        if richieste_collection.count_documents({"RichiestaFinanziamentoID": id_api}) > 0:
+            skipped_count += 1
+            continue
 
-                        if pd.notna(col_min) and pd.notna(col_max):
-                            clipped_value = np.clip(original_value, col_min, col_max)
-                            if original_value != clipped_value:
-                                app.logger.info(f"Clipping colonna '{col}': Originale {original_value}, Clippato a {clipped_value} (Limiti: min={col_min}, max={col_max})")
-                            json_data[col] = clipped_value
-                        # Potresti aggiungere logica per clippare solo min o solo max se l'altro non è definito
-                    except (ValueError, TypeError) as e:
-                        app.logger.warning(f"Impossibile clippare la colonna '{col}' (valore: {json_data[col]}), errore: {e}. Lasciato invariato.")
-        else:
-            app.logger.info("Nessun clipping basato sui limiti del training set (training_bounds.joblib non caricato o vuoto).")
-        
-        app.logger.debug(f"JSON data dopo potenziale clipping: {json_data}")
+        # La funzione get_prediction_for_request_simplified prende i dati originali dell'API
+        probabilita = get_prediction_for_request_simplified(str(id_api), item_original_api.copy())
 
-        # Creazione DataFrame
-        input_df = pd.DataFrame([json_data])
-        app.logger.debug(f"Input DataFrame prima del preprocessing dettagliato: \n{input_df.to_string()}")
-
-        # 1. Mappatura variabili categoriche ordinali e binarie
-        mapping_titolo_studio = {"Diploma": 0, "Laurea": 1, "Dottorato di ricerca": 2}
-        if "TitoloStudio" in input_df.columns:
-            input_df["TitoloStudio"] = input_df["TitoloStudio"].map(mapping_titolo_studio)
-
-        mapping_sesso = {"F": 0, "M": 1}
-        if "Sesso" in input_df.columns:
-            input_df["Sesso"] = input_df["Sesso"].map(mapping_sesso)
-
-        mapping_inadempienze = {"NO": 0, "SI": 1}
-        if "InadempienzeFinanziamentiPrecedenti" in input_df.columns:
-            # Converti a stringa e poi a maiuscolo per gestire input come "no", "si"
-            val_inad = str(json_data.get("InadempienzeFinanziamentiPrecedenti", "")).upper()
-            input_df["InadempienzeFinanziamentiPrecedenti"] = mapping_inadempienze.get(val_inad) # Usa .get per evitare KeyError
-
-        app.logger.debug(f"Input DataFrame dopo mappature: \n{input_df.to_string()}")
-
-        # 2. One-Hot Encoding
-        categorical_cols_ohe = []
-        if "InformazioniImmobile" in input_df.columns: categorical_cols_ohe.append("InformazioniImmobile")
-        if "ScopoFinanziamento" in input_df.columns: categorical_cols_ohe.append("ScopoFinanziamento")
-
-        if categorical_cols_ohe:
-            input_df = pd.get_dummies(input_df, columns=categorical_cols_ohe, dummy_na=False)
-
-        app.logger.debug(f"Input DataFrame dopo OHE (colonne: {input_df.columns.tolist()}): \n{input_df.to_string()}")
-
-        # 3. Allinea le colonne
-        processed_df = pd.DataFrame(columns=model_columns)
-        for col in model_columns:
-            if col in input_df.columns:
-                
-                processed_df[col] = input_df[col]
-
-        processed_df = processed_df.fillna(0) # Gestisce NaN da mappature fallite e colonne OHE mancanti
-        app.logger.debug(f"Processed DataFrame dopo allineamento e fillna(0): \n{processed_df.to_string()}")
-
-        # Converti tutte le colonne in numerico per sicurezza
-        for col in processed_df.columns:
-            processed_df[col] = pd.to_numeric(processed_df[col], errors='coerce').fillna(0)
-        app.logger.debug(f"Processed DataFrame dopo conversione finale a numerico: \n{processed_df.to_string()}")
-
-        # 4. Normalizzazione
-        actual_cols_to_scale_in_df = [col for col in cols_to_scale if col in processed_df.columns]
-        if actual_cols_to_scale_in_df:
-            app.logger.debug(f"Colonne da scalare: {actual_cols_to_scale_in_df}")
-            app.logger.debug(f"Dati da scalare (prima) per colonne {actual_cols_to_scale_in_df}: \n{processed_df[actual_cols_to_scale_in_df].to_string()}")
-            try:
-                # Assicurati che le colonne siano float prima dello scaling
-                processed_df[actual_cols_to_scale_in_df] = processed_df[actual_cols_to_scale_in_df].astype(float)
-                scaled_values = scaler.transform(processed_df[actual_cols_to_scale_in_df])
-                processed_df[actual_cols_to_scale_in_df] = scaled_values
-                app.logger.debug(f"Dati scalati (dopo): \n{processed_df[actual_cols_to_scale_in_df].to_string()}")
-            except ValueError as ve:
-                app.logger.error(f"Errore durante lo scaling: {ve}. Shape dati: {processed_df[actual_cols_to_scale_in_df].shape}. Scaler n_features_in_: {getattr(scaler, 'n_features_in_', 'N/A')}", exc_info=True)
-                return jsonify({"error": f"Errore di coerenza dati durante lo scaling: {ve}"}), 400
-        else:
-            app.logger.warning("Nessuna colonna da scalare trovata o specificata.")
-
-        # --- PREDIZIONE ---
-        final_input_for_model = processed_df[model_columns]
-        app.logger.debug(f"Input finale per il modello (shape {final_input_for_model.shape}): \n{final_input_for_model.to_string()}")
-        app.logger.debug(f"Colonne finali per il modello: {final_input_for_model.columns.tolist()}")
+        document_to_save = item_original_api.copy()
+        document_to_save["RichiestaFinanziamentoID"] = id_api # Standardizza il nome dell'ID nel DB
+        document_to_save["ProbabilitaFinanziamentoApprovato"] = probabilita
 
         try:
-            probability_approved = model.predict_proba(final_input_for_model)[0, 1]
-            app.logger.info(f"Probabilità calcolata: {probability_approved}")
-        except ValueError as ve: # Es. per "Input X contains NaN" or "infinity"
-            app.logger.error(f"Errore durante la predizione: {ve}. Shape dati: {final_input_for_model.shape}. Modello n_features_in_: {getattr(model, 'n_features_in_', 'N/A')}", exc_info=True)
-            # Controlla se ci sono NaN o inf nel final_input_for_model
-            if final_input_for_model.isnull().values.any():
-                app.logger.error("NaN TROVATI nell'input finale per il modello!")
-                app.logger.error(final_input_for_model[final_input_for_model.isnull().any(axis=1)])
-            if np.isinf(final_input_for_model.to_numpy()).any():
-                app.logger.error("VALORI INFINITI TROVATI nell'input finale per il modello!")
-                app.logger.error(final_input_for_model[np.isinf(final_input_for_model.to_numpy()).any(axis=1)])
-            return jsonify({"error": f"Errore di coerenza dati per la predizione (es. NaN/inf): {ve}"}), 400
+            richieste_collection.insert_one(document_to_save)
+            imported_count += 1
+        except Exception as e_db:
+            print(f"!!! Errore INSERIMENTO DB per ID {id_api}: {e_db}")
+            error_processing_count +=1
 
-        return jsonify({"probabilita_approvazione": float(probability_approved)})
+    summary_msg = (f"Importazione completata. "
+                   f"Importati: {imported_count}. "
+                   f"Skippati (già esistenti): {skipped_count}. "
+                   f"Errori processamento/predizione/salvataggio: {error_processing_count}.")
+    print(summary_msg)
+    return jsonify({
+        "message": summary_msg,
+        "imported": imported_count,
+        "skipped": skipped_count,
+        "errors_processing": error_processing_count
+    }), 200
 
-    
-    except KeyError as e:
-        app.logger.warning(f"Campo mancante o errato nella richiesta JSON: {str(e)}", exc_info=True)
-        return jsonify({"error": f"Campo mancante o errato nella richiesta JSON: {str(e)}"}), 400
-    except ValueError as e:
-        app.logger.error(f"Errore nel valore di un campo o durante la conversione: {str(e)}", exc_info=True)
-        return jsonify({"error": f"Errore nel valore di un campo o durante la conversione: {str(e)}"}), 400
-    except Exception as e:
-        app.logger.error(f"Errore non gestito: {str(e)}", exc_info=True)
-        return jsonify({"error": f"Errore interno del server."}), 500
+
+# --- Endpoint per la predizione singola (per banca.html) ---
+@app.route('/predict', methods=['POST'])
+def predict_single_loan_route():
+    print("\n--- Endpoint /predict chiamato ---")
+    json_data_from_form = request.get_json()
+    if not json_data_from_form:
+        print("!!! /predict: Richiesta JSON vuota.")
+        return jsonify({"error": "Richiesta JSON vuota"}), 400
+
+    # Mappa i nomi del form HTML ai nomi "stile API" attesi da get_prediction_for_request_simplified
+    data_api_format_from_form = {
+        "eta_cliente": json_data_from_form.get("Eta"),
+        "sesso_cliente": json_data_from_form.get("Sesso"),
+        "titolo_studio_cliente": json_data_from_form.get("TitoloStudio"),
+        "reddito_annuo_lordo": json_data_from_form.get("RedditoLordoUltimoAnno"),
+        "anni_esperienza_lavorativa": json_data_from_form.get("AnniEsperienzaLavorativa"),
+        "info_immobile": json_data_from_form.get("InformazioniImmobile"),
+        "importo_richiesto_finanziamento": json_data_from_form.get("ImportoRichiesto"),
+        "scopo_finanziamento": json_data_from_form.get("ScopoFinanziamento"),
+        "tasso_interesse_proposto": json_data_from_form.get("TassoInteresseFinanziamento"),
+        # "rapporto_importo_reddito" sarà calcolato sotto se non presente
+        "durata_storia_creditizia_anni": json_data_from_form.get("DurataDellaStoriaCreditiziaInAnni"),
+        "punteggio_affidabilita_creditizia": json_data_from_form.get("AffidabilitàCreditizia"),
+        "inadempienze_pregresse": 1 if str(json_data_from_form.get("InadempienzeFinanziamentiPrecedenti","NO")).upper() == "SI" else 0
+    }
+
+    # Calcola 'rapporto_importo_reddito' se non è stato inviato (o se vuoi ricalcolarlo)
+    try:
+        reddito = float(data_api_format_from_form.get("reddito_annuo_lordo", 0))
+        importo = float(data_api_format_from_form.get("importo_richiesto_finanziamento", 0))
+        if reddito > 0:
+            data_api_format_from_form["rapporto_importo_reddito"] = importo / reddito
+        else:
+            data_api_format_from_form["rapporto_importo_reddito"] = 999 # Placeholder
+    except (TypeError, ValueError):
+         data_api_format_from_form["rapporto_importo_reddito"] = 999 # Placeholder
+
+    # print(f"/predict - Dati form mappati per predizione: {data_api_format_from_form}")
+    probabilita = get_prediction_for_request_simplified("FROM_FORM", data_api_format_from_form.copy())
+
+    print(f"/predict - Probabilità calcolata per dati form: {probabilita}")
+    return jsonify({"probabilita_approvazione": probabilita})
+
 
 if __name__ == '__main__':
-    # Il logger di Flask è già configurato sopra
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("\n--- Avvio server Flask ---")
+    print(f"URL per il form di test (se presente): http://127.0.0.1:5000/ (o il file .html diretto)")
+    print(f"URL per importazione dati (da chiamare con POST da import_page.html): http://127.0.0.1:5000/import_data")
+    app.run(host='0.0.0.0', port=5000, debug=False) # debug=False per output più pulito
