@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Importa richieste finanziamento</title>
+</head>
+<body>
+    <button id="importaBtn">Importa richieste</button>
+    <div id="risultato"></div>
+    <script>
+        document.getElementById('importaBtn').onclick = function() {
+            fetch('/importa', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('risultato').innerText = 
+                        "Nuove richieste importate: " + data.importati;
+                })
+                .catch(err => {
+                    document.getElementById('risultato').innerText = "Errore: " + err;
+                });
+        }
+    </script>
+</body>
+</html>

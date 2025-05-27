@@ -1,0 +1,9 @@
+pandas==2.2.3
+numpy==2.2.6
+scikit-learn==1.6.1
+seaborn==0.13.2
+matplotlib==3.10.3
+xgboost==3.0.2
+Flask==3.0.3
+flask_cors==6.0.0
+sqlalchemy
