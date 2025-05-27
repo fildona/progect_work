@@ -22,6 +22,9 @@
                 <h1 class="h4 mb-0">Statistiche Finanziamenti</h1>
             </div>
             <div class="card-body">
+                <!-- KPI CARDS -->
+                <div id="kpiCards" class="row row-cols-1 row-cols-md-4 g-3 mb-4"></div>
+                <!-- GRAFICI ESISTENTI -->
                 <div class="row g-4">
                     <div class="col-lg-6">
                         <div class="card chart-card">
@@ -56,6 +59,47 @@
                         </div>
                     </div>
                 </div>
+                <!-- NUOVI GRAFICI E TABELLA -->
+                <div class="row g-4 mt-4">
+                    <div class="col-lg-6">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Importo Medio Richiesto/Approvato per Sesso</h5>
+                                <canvas id="chartMedioSesso"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Importo Medio Richiesto/Approvato per Titolo di Studio</h5>
+                                <canvas id="chartMedioTitolo"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Top 10 Importi Richiesti</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped" id="top10Table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Importo Richiesto</th>
+                                                <th>Sesso</th>
+                                                <th>Titolo Studio</th>
+                                                <th>Prob. Approvazione</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ... -->
             </div>
         </div>
     </div>

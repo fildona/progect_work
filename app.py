@@ -12,6 +12,10 @@ import io
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 # Carica modello e scaler
 MODEL_PATH = os.path.join("model_scaler", "best_model.pkl")
 SCALER_PATH = os.path.join("model_scaler", "best_scaler.pkl")
@@ -138,8 +142,11 @@ def api_richieste():
         if value:
             query = query.filter(getattr(RichiestaFinanziamento, field) == value)
 
+    limit = request.args.get('limit', type=int)
     results = query.all()
     session.close()
+    if limit:
+        results = results[:limit]
 
     # Serializza risultati
     def serialize(obj):
@@ -215,6 +222,48 @@ def api_statistiche():
         if value:
             query = query.filter(getattr(RichiestaFinanziamento, field) == value)
 
+    # KPI
+    totale_richieste = query.count()
+    importo_totale = session.query(func.sum(RichiestaFinanziamento.ImportoRichiesto)).scalar() or 0
+    approvate = query.filter(RichiestaFinanziamento.ProbabilitaFinanziamentoApprovato > 0.5).count()
+    percentuale_approvate = (approvate / totale_richieste * 100) if totale_richieste else 0
+    importo_medio = session.query(func.avg(RichiestaFinanziamento.ImportoRichiesto)).scalar() or 0
+
+    # Importo medio richiesto/approvato per sesso
+    importo_medio_sesso = dict(
+        session.query(
+            RichiestaFinanziamento.Sesso,
+            func.avg(RichiestaFinanziamento.ImportoRichiesto)
+        ).group_by(RichiestaFinanziamento.Sesso).all()
+    )
+    importo_medio_approvato_sesso = dict(
+        session.query(
+            RichiestaFinanziamento.Sesso,
+            func.avg(RichiestaFinanziamento.ImportoRichiesto)
+        ).filter(RichiestaFinanziamento.ProbabilitaFinanziamentoApprovato > 0.5)
+         .group_by(RichiestaFinanziamento.Sesso).all()
+    )
+
+    # Importo medio richiesto/approvato per titolo studio
+    importo_medio_titolo = dict(
+        session.query(
+            RichiestaFinanziamento.TitoloStudio,
+            func.avg(RichiestaFinanziamento.ImportoRichiesto)
+        ).group_by(RichiestaFinanziamento.TitoloStudio).all()
+    )
+    importo_medio_approvato_titolo = dict(
+        session.query(
+            RichiestaFinanziamento.TitoloStudio,
+            func.avg(RichiestaFinanziamento.ImportoRichiesto)
+        ).filter(RichiestaFinanziamento.ProbabilitaFinanziamentoApprovato > 0.5)
+         .group_by(RichiestaFinanziamento.TitoloStudio).all()
+    )
+
+    # Top 10 importi richiesti
+    top10 = query.order_by(RichiestaFinanziamento.ImportoRichiesto.desc()).limit(10).all()
+    def serialize(obj):
+        return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
     # 1. Grafico a torta: conteggio richieste per Sesso
     sesso_counts = dict(query.with_entities(
         RichiestaFinanziamento.Sesso, 
@@ -241,6 +290,19 @@ def api_statistiche():
 
     session.close()
     return jsonify({
+        # KPI
+        "totale_richieste": totale_richieste,
+        "importo_totale": importo_totale,
+        "percentuale_approvate": percentuale_approvate,
+        "importo_medio": importo_medio,
+        # Importo medio richiesto/approvato per sesso/titolo
+        "importo_medio_sesso": importo_medio_sesso,
+        "importo_medio_approvato_sesso": importo_medio_approvato_sesso,
+        "importo_medio_titolo": importo_medio_titolo,
+        "importo_medio_approvato_titolo": importo_medio_approvato_titolo,
+        # Top 10
+        "top10_importi": [serialize(r) for r in top10],
+        # Grafici già esistenti
         "sesso_counts": sesso_counts,
         "immobile_importi": immobile_importi,
         "titolo_importi": titolo_importi,

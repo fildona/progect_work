@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <title>Richieste di Finanziamento</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        #resultsTable th, #resultsTable td {
+            font-size: 0.80rem;
+            padding: 0.2rem 0.3rem;
+        }
+        #resultsTable th {
+            max-width: 90px;
+            white-space: normal; /* Permette l'andata a capo */
+        }
+        #resultsTable td {
+            white-space: nowrap;
+        }
+        #resultsTable {
+            table-layout: auto;
+        }
+    </style>
 </head>
 <body>
 <div class="container mt-4">
@@ -76,7 +92,7 @@
                     <th>Importo Richiesto</th>
                     <th>Scopo</th>
                     <th>Tasso Interesse</th>
-                    <th>Importo/Reditto</th>
+                    <th>Importo / Reditto</th>
                     <th>Durata Storia Creditizia</th>
                     <th>Affidabilità Creditizia</th>
                     <th>Inadempienze Precedenti</th>
@@ -147,6 +163,111 @@ document.getElementById('exportExcel').addEventListener('click', function() {
 document.getElementById('exportJson').addEventListener('click', function() {
     const qs = buildQueryString(document.getElementById('filterForm'));
     window.location = '/api/richieste/export?format=json' + qs.replace('?', '&');
+});
+
+let sortField = null;
+let sortDir = 'desc'; // default: desc
+let defaultData = [];
+let currentData = [];
+let limit = 50;
+
+function renderTable(data) {
+    const tbody = document.querySelector('#resultsTable tbody');
+    tbody.innerHTML = "";
+    data.forEach(row => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${row.RichiestaFinanziamentoID}</td>
+                <td>${row.Eta}</td>
+                <td>${row.Sesso}</td>
+                <td>${row.TitoloStudio}</td>
+                <td>${row.RedditoLordoUltimoAnno}</td>
+                <td>${row.AnniEsperienzaLavorativa}</td>
+                <td>${row.InformazioniImmobile}</td>
+                <td>${row.ImportoRichiesto}</td>
+                <td>${row.ScopoFinanziamento}</td>
+                <td>${row.TassoInteresseFinanziamento}</td>
+                <td>${row.ImportoRichiestoDivisoReddito}</td>
+                <td>${row.DurataDellaStoriaCreditiziaInAnni}</td>
+                <td>${row['AffidabilitàCreditizia']}</td>
+                <td>${row.InadempienzeFinanziamentiPrecedenti}</td>
+                <td>${(row.ProbabilitaFinanziamentoApprovato*100).toFixed(2)}%</td>
+            </tr>
+        `;
+    });
+    // Paginazione
+    renderPagination();
+}
+
+function renderPagination() {
+    let pagDiv = document.getElementById('paginationDiv');
+    if (!pagDiv) {
+        pagDiv = document.createElement('div');
+        pagDiv.id = 'paginationDiv';
+        pagDiv.className = 'mt-2';
+        document.querySelector('.table-responsive').appendChild(pagDiv);
+    }
+    pagDiv.innerHTML = `
+        <span>Mostra: </span>
+        <button class="btn btn-sm btn-outline-primary" ${limit===50?'disabled':''} id="btn50">50</button>
+        <button class="btn btn-sm btn-outline-primary" ${limit===100?'disabled':''} id="btn100">100</button>
+        <button class="btn btn-sm btn-outline-primary" ${limit===99999?'disabled':''} id="btnMax">Max</button>
+    `;
+    document.getElementById('btn50').onclick = () => { limit=50; fetchResults(); };
+    document.getElementById('btn100').onclick = () => { limit=100; fetchResults(); };
+    document.getElementById('btnMax').onclick = () => { limit=99999; fetchResults(); };
+}
+
+function sortData(field) {
+    if (field === 'RichiestaFinanziamentoID') {
+        // Reset all sorting
+        sortField = null;
+        currentData = [...defaultData];
+    } else {
+        if (sortField === field) {
+            sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+            sortField = field;
+            sortDir = 'desc';
+        }
+        currentData.sort((a, b) => {
+            let v1 = a[field], v2 = b[field];
+            if (typeof v1 === 'string') v1 = v1.toLowerCase();
+            if (typeof v2 === 'string') v2 = v2.toLowerCase();
+            if (v1 < v2) return sortDir === 'asc' ? -1 : 1;
+            if (v1 > v2) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+    renderTable(currentData.slice(0, limit));
+}
+
+function fetchResults() {
+    const form = document.getElementById('filterForm');
+    let qs = buildQueryString(form);
+    qs += (qs ? '&' : '?') + 'limit=' + limit;
+    fetch('/api/richieste' + qs)
+        .then(r => r.json())
+        .then(data => {
+            defaultData = [...data];
+            currentData = [...data];
+            if (sortField) sortData(sortField);
+            else renderTable(currentData.slice(0, limit));
+        });
+}
+
+// Click sulle intestazioni
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#resultsTable th').forEach((th, idx) => {
+        const fieldMap = [
+            'RichiestaFinanziamentoID', 'Eta', 'Sesso', 'TitoloStudio', 'RedditoLordoUltimoAnno',
+            'AnniEsperienzaLavorativa', 'InformazioniImmobile', 'ImportoRichiesto', 'ScopoFinanziamento',
+            'TassoInteresseFinanziamento', 'ImportoRichiestoDivisoReddito', 'DurataDellaStoriaCreditiziaInAnni',
+            'AffidabilitàCreditizia', 'InadempienzeFinanziamentiPrecedenti', 'ProbabilitaFinanziamentoApprovato'
+        ];
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', () => sortData(fieldMap[idx]));
+    });
 });
 
 window.onload = fetchResults;

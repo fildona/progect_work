@@ -12,6 +12,45 @@ async function loadCharts() {
     const res = await fetch('/api/statistiche' + (qs ? '?' + qs : ''));
     const data = await res.json();
 
+    // KPI CARDS
+    const kpiDiv = document.getElementById('kpiCards');
+    if (kpiDiv) {
+        kpiDiv.innerHTML = `
+            <div class="col">
+                <div class="card border-primary text-center">
+                    <div class="card-body">
+                        <div class="h2">${data.totale_richieste}</div>
+                        <div class="small text-muted">Totale Richieste</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card border-success text-center">
+                    <div class="card-body">
+                        <div class="h2">€ ${data.importo_totale.toLocaleString('it-IT', {maximumFractionDigits:0})}</div>
+                        <div class="small text-muted">Importo Totale Richiesto</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card border-info text-center">
+                    <div class="card-body">
+                        <div class="h2">${data.percentuale_approvate.toFixed(1)}%</div>
+                        <div class="small text-muted">Percentuale Approvazione</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card border-warning text-center">
+                    <div class="card-body">
+                        <div class="h2">€ ${data.importo_medio.toLocaleString('it-IT', {maximumFractionDigits:0})}</div>
+                        <div class="small text-muted">Importo Medio Richiesto</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     // Distruggi i grafici precedenti se esistono
     if (window.charts) window.charts.forEach(c => c.destroy());
     window.charts = [];
@@ -116,6 +155,57 @@ async function loadCharts() {
         }
     });
     window.charts.push(chartScopo);
+
+    // Importo medio richiesto/approvato per sesso
+    const sessoLabels = Object.keys(data.importo_medio_sesso);
+    const richiestoSesso = sessoLabels.map(k => data.importo_medio_sesso[k]);
+    const approvatoSesso = sessoLabels.map(k => data.importo_medio_approvato_sesso[k] || 0);
+    const chartMedioSesso = new Chart(document.getElementById('chartMedioSesso'), {
+        type: 'bar',
+        data: {
+            labels: sessoLabels,
+            datasets: [
+                { label: 'Richiesto', data: richiestoSesso, backgroundColor: '#36A2EB' },
+                { label: 'Approvato', data: approvatoSesso, backgroundColor: '#8BC34A' }
+            ]
+        },
+        options: { plugins: { legend: { display: true } } }
+    });
+    window.charts.push(chartMedioSesso);
+
+    // Importo medio richiesto/approvato per titolo studio
+    const titoloLabels = Object.keys(data.importo_medio_titolo);
+    const richiestoTitolo = titoloLabels.map(k => data.importo_medio_titolo[k]);
+    const approvatoTitolo = titoloLabels.map(k => data.importo_medio_approvato_titolo[k] || 0);
+    const chartMedioTitolo = new Chart(document.getElementById('chartMedioTitolo'), {
+        type: 'bar',
+        data: {
+            labels: titoloLabels,
+            datasets: [
+                { label: 'Richiesto', data: richiestoTitolo, backgroundColor: '#FF6384' },
+                { label: 'Approvato', data: approvatoTitolo, backgroundColor: '#FFCE56' }
+            ]
+        },
+        options: { plugins: { legend: { display: true } }, indexAxis: 'y' }
+    });
+    window.charts.push(chartMedioTitolo);
+
+    // Top 10 tabella
+    const tbody = document.querySelector('#top10Table tbody');
+    if (tbody) {
+        tbody.innerHTML = '';
+        data.top10_importi.forEach(r => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${r.RichiestaFinanziamentoID}</td>
+                    <td>€ ${r.ImportoRichiesto.toLocaleString('it-IT', {maximumFractionDigits:0})}</td>
+                    <td>${r.Sesso}</td>
+                    <td>${r.TitoloStudio}</td>
+                    <td>${(r.ProbabilitaFinanziamentoApprovato*100).toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+    }
 }
 
 function showFilters() {
