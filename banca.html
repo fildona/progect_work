@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Richiesta Finanziamento</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    .container { max-width: 700px; }
+    /* Stile per i messaggi di errore generici (es. API non raggiungibile) */
+    .error-message { 
+        font-size: 0.9em; 
+        margin-top: 10px;
+        text-align: center;
+    }
+    /* Stile per il testo del risultato della probabilità */
+    .risultato-probabilita-testo { 
+        font-size: 1.2em;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 10px; 
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+  <div class="container my-5">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h2 class="mb-0">Modulo Richiesta Finanziamento</h2>
+      </div>
+      <div class="card-body p-4">
+        <form id="loanRequestForm">
+
+          <!-- Età -->
+          <div class="mb-3">
+            <label for="eta" class="form-label">Età</label>
+            <input type="number" class="form-control" id="eta" name="Eta" min="18" max="110" required>
+          </div>
+
+          <!-- Sesso -->
+          <div class="mb-3">
+            <label for="sesso" class="form-label">Sesso</label>
+            <select id="sesso" name="Sesso" class="form-select" required>
+              <option value="" selected disabled>-- Seleziona --</option>
+              <option value="M">Maschio</option>
+              <option value="F">Femmina</option>
+            </select>
+          </div>
+
+          <!-- Titolo di Studio -->
+          <div class="mb-3">
+            <label for="titolo" class="form-label">Titolo di Studio</label>
+            <select id="titolo" name="TitoloStudio" class="form-select" required>
+              <option value="" selected disabled>-- Seleziona --</option>
+              <option value="Diploma">Diploma</option>
+              <option value="Laurea">Laurea</option>
+              <option value="Dottorato di ricerca">Dottorato di ricerca</option>
+            </select>
+          </div>
+
+          <!-- Reddito -->
+          <div class="mb-3">
+            <label for="reddito" class="form-label">Reddito Lordo Ultimo Anno (€)</label>
+            <input type="number" class="form-control" id="reddito" name="RedditoLordoUltimoAnno" step="100" min="0" required>
+          </div>
+
+          <!-- Esperienza lavorativa -->
+          <div class="mb-3">
+            <label for="esperienza" class="form-label">Anni Esperienza Lavorativa</label>
+            <input type="number" class="form-control" id="esperienza" name="AnniEsperienzaLavorativa" min="0" max="65" required>
+          </div>
+
+          <!-- Info immobile -->
+          <div class="mb-3">
+            <label for="immobile" class="form-label">Informazioni Immobile</label>
+            <select id="immobile" name="InformazioniImmobile" class="form-select" required>
+              <option value="" selected disabled>-- Seleziona --</option>
+              <option value="ProprietàMutuoEstinto">Proprietà con Mutuo Estinto</option>
+              <option value="Affitto">In Affitto</option>
+              <option value="ProprietàMutuoDaEstinguere">Proprietà con Mutuo da Estinguere</option>
+            </select>
+          </div>
+
+          <!-- Importo Richiesto -->
+          <div class="mb-3">
+            <label for="importo" class="form-label">Importo Richiesto (€)</label>
+            <input type="number" class="form-control" id="importo" name="ImportoRichiesto" step="100" min="0" required>
+          </div>
+
+          <!-- Scopo -->
+          <div class="mb-3">
+            <label for="scopo" class="form-label">Scopo Finanziamento</label>
+            <select id="scopo" name="ScopoFinanziamento" class="form-select" required>
+              <option value="" selected disabled>-- Seleziona --</option>
+              <option value="Personale">Personale</option>
+              <option value="Formazione">Formazione</option>
+              <option value="Medico">Spese Mediche</option>
+              <option value="InizioAttivitaImprenditoriale">Avvio Attività Imprenditoriale</option>
+              <option value="RistrutturazioneCasa">Ristrutturazione Casa</option>
+              <option value="RistrutturazioneAltriDebiti">Consolidamento Altri Debiti</option>
+            </select>
+          </div>
+
+          <!-- Tasso Interesse -->
+          <div class="mb-3">
+            <label for="tasso" class="form-label">Tasso Interesse Finanziamento (%)</label>
+            <input type="number" class="form-control" id="tasso" name="TassoInteresseFinanziamento" step="0.01" min="0" max="100" required>
+          </div>
+
+          <!-- Durata storia creditizia -->
+          <div class="mb-3">
+            <label for="credit_history" class="form-label">Durata della Storia Creditizia (anni)</label>
+            <input type="number" class="form-control" id="credit_history" name="DurataDellaStoriaCreditiziaInAnni" min="0" max="92" required>
+          </div>
+
+          <!-- Affidabilità -->
+          <div class="mb-3">
+            <label for="affidabilita" class="form-label">Affidabilità Creditizia (300–850)</label>
+            <input type="number" class="form-control" id="affidabilita" name="AffidabilitàCreditizia" step="1" min="300" max="850" required>
+          </div>
+
+           <!-- Inadempienze -->
+          <div class="mb-3">
+            <label for="inadempienza" class="form-label">Inadempienze Finanziamenti Precedenti</label>
+            <select id="inadempienza" name="InadempienzeFinanziamentiPrecedenti" class="form-select" required>
+              <option value="" selected disabled>-- Seleziona --</option>
+              <option value="SI">Sì</option>
+              <option value="NO">No</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">Invia Richiesta e Calcola Probabilità</button>
+        </form>
+        <div id="risultatoPredizione" class="mt-4">
+          <!-- Qui verrà visualizzato il risultato -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loanRequestForm').addEventListener('submit', function(event) {
+      event.preventDefault(); // Impedisce l'invio tradizionale del form
+
+      const formData = new FormData(this);
+      const data = {};
+      formData.forEach((value, key) => {
+        if (!isNaN(value) && value !== '' && 
+            key !== 'Sesso' && 
+            key !== 'TitoloStudio' && 
+            key !== 'InformazioniImmobile' && 
+            key !== 'ScopoFinanziamento' && 
+            key !== 'InadempienzeFinanziamentiPrecedenti') {
+          data[key] = parseFloat(value);
+        } else {
+          data[key] = value;
+        }
+      });
+
+      const risultatoDiv = document.getElementById('risultatoPredizione');
+      risultatoDiv.innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+
+      fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(errData => {
+            const error = new Error(errData.error || `HTTP error! status: ${response.status}`);
+            error.responseBody = errData;
+            throw error;
+          });
+        }
+        return response.json();
+      })
+      .then(result => {
+        if (result.probabilita_approvazione !== undefined) {
+          const probabilitaPercentuale = parseFloat((result.probabilita_approvazione * 100).toFixed(2));
+          let alertClass = '';
+          let alertMessage = `Probabilità di approvazione: ${probabilitaPercentuale}%`;
+
+          if (probabilitaPercentuale < 34) { // Soglia per rosso (bassa probabilità)
+            alertClass = 'alert-danger';
+          } else if (probabilitaPercentuale < 67) { // Soglia per giallo (media probabilità)
+            alertClass = 'alert-warning';
+          } else { // Alta probabilità
+            alertClass = 'alert-success';
+          }
+          // Applica la classe di colore e la classe per lo stile del testo
+          risultatoDiv.innerHTML = `<div class="alert ${alertClass} risultato-probabilita-testo" role="alert">${alertMessage}</div>`;
+        } else {
+          console.warn("Risposta OK ma formato JSON non atteso:", result);
+          // Per risposte OK ma con formato non atteso, usiamo un alert-warning con stile error-message
+          risultatoDiv.innerHTML = `<div class="alert alert-warning error-message" role="alert">Risposta non valida o in formato imprevisto dal server.</div>`;
+        }
+      })
+      .catch(error => {
+        console.error('Errore durante la richiesta API:', error);
+        let errorMessage = "Si è verificato un errore durante la comunicazione con il server.";
+        
+        if (error.responseBody && error.responseBody.error) {
+            errorMessage = `Errore dal server: ${error.responseBody.error}`;
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        // Per errori di rete o API, usiamo un alert-danger con stile error-message
+        risultatoDiv.innerHTML = `<div class="alert alert-danger error-message" role="alert">${errorMessage}</div>`;
+      });
+    });
+  </script>
+
+</body>
+</html>
