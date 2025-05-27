@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistiche Finanziamenti</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='statistiche.js') }}"></script>
+    <style>
+        .chart-card {
+            min-height: 400px;
+        }
+        @media (max-width: 991px) {
+            .chart-card { min-height: 350px; }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container my-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h1 class="h4 mb-0">Statistiche Finanziamenti</h1>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Richieste per Sesso</h5>
+                                <canvas id="chartSesso"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Somma Importi per Informazioni Immobile</h5>
+                                <canvas id="chartImmobile"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Somma Importi per Titolo di Studio</h5>
+                                <canvas id="chartTitolo"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card chart-card">
+                            <div class="card-body">
+                                <h5 class="card-title">Conteggio per Scopo Finanziamento</h5>
+                                <canvas id="chartScopo"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

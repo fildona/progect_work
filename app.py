@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
+from sqlalchemy import func
 import joblib
 import pandas as pd
 import numpy as np
@@ -196,6 +197,55 @@ def api_richieste_export():
         df.to_csv(output, index=False)
         output.seek(0)
         return send_file(io.BytesIO(output.getvalue().encode()), download_name="richieste.csv", as_attachment=True)
+
+# parte statistiche
+
+@app.route('/statistiche')
+def statistiche_html():
+    return render_template('statistiche.html')
+
+@app.route('/api/statistiche')
+def api_statistiche():
+    session = SessionLocal()
+    query = session.query(RichiestaFinanziamento)
+
+    # Applica filtri se presenti
+    for field in ["Sesso", "TitoloStudio", "InformazioniImmobile", "ScopoFinanziamento"]:
+        value = request.args.get(field)
+        if value:
+            query = query.filter(getattr(RichiestaFinanziamento, field) == value)
+
+    # 1. Grafico a torta: conteggio richieste per Sesso
+    sesso_counts = dict(query.with_entities(
+        RichiestaFinanziamento.Sesso, 
+        func.count(RichiestaFinanziamento.RichiestaFinanziamentoID)
+    ).group_by(RichiestaFinanziamento.Sesso).all())
+
+    # 2. Grafico a barre verticali: somma ImportiRichiesti per InformazioniImmobile
+    immobile_importi = dict(query.with_entities(
+        RichiestaFinanziamento.InformazioniImmobile,
+        func.sum(RichiestaFinanziamento.ImportoRichiesto)
+    ).group_by(RichiestaFinanziamento.InformazioniImmobile).all())
+
+    # 3. Grafico a barre orizzontali: somma ImportiRichiesti per TitoloStudio
+    titolo_importi = dict(query.with_entities(
+        RichiestaFinanziamento.TitoloStudio,
+        func.sum(RichiestaFinanziamento.ImportoRichiesto)
+    ).group_by(RichiestaFinanziamento.TitoloStudio).all())
+
+    # 4. Grafico a scelta: conteggio per ScopoFinanziamento
+    scopo_counts = dict(query.with_entities(
+        RichiestaFinanziamento.ScopoFinanziamento,
+        func.count(RichiestaFinanziamento.RichiestaFinanziamentoID)
+    ).group_by(RichiestaFinanziamento.ScopoFinanziamento).all())
+
+    session.close()
+    return jsonify({
+        "sesso_counts": sesso_counts,
+        "immobile_importi": immobile_importi,
+        "titolo_importi": titolo_importi,
+        "scopo_counts": scopo_counts
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
