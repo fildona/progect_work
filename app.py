@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 import joblib
 import pandas as pd
@@ -6,6 +6,7 @@ import numpy as np
 import os
 from db.db import SessionLocal, RichiestaFinanziamento
 import requests
+import io
 
 app = Flask(__name__)
 CORS(app)
@@ -98,6 +99,103 @@ def importa():
 @app.route('/importa_html')
 def importa_html():
     return render_template('importa.html')
+
+# parte richieste + export
+
+@app.route('/richieste')
+def richieste_html():
+    return render_template('richieste.html')
+
+@app.route('/api/richieste')
+def api_richieste():
+    session = SessionLocal()
+    query = session.query(RichiestaFinanziamento)
+
+    # Filtri dinamici
+    def get_range(query, field):
+        min_val = request.args.get(f"{field}_min", type=float)
+        max_val = request.args.get(f"{field}_max", type=float)
+        if min_val is not None:
+            query = query.filter(getattr(RichiestaFinanziamento, field) >= min_val)
+        if max_val is not None:
+            query = query.filter(getattr(RichiestaFinanziamento, field) <= max_val)
+        return query
+
+    # Range numerici
+    for field in [
+        "Eta", "RedditoLordoUltimoAnno", "AnniEsperienzaLavorativa", "ImportoRichiesto",
+        "TassoInteresseFinanziamento", "ImportoRichiestoDivisoReddito", "DurataDellaStoriaCreditiziaInAnni",
+        "AffidabilitàCreditizia", "ProbabilitaFinanziamentoApprovato"
+    ]:
+        query = get_range(query, field)
+
+    # Filtri select
+    for field in [
+        "Sesso", "TitoloStudio", "InformazioniImmobile", "ScopoFinanziamento", "InadempienzeFinanziamentiPrecedenti"
+    ]:
+        value = request.args.get(field)
+        if value:
+            query = query.filter(getattr(RichiestaFinanziamento, field) == value)
+
+    results = query.all()
+    session.close()
+
+    # Serializza risultati
+    def serialize(obj):
+        return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+    return jsonify([serialize(r) for r in results])
+
+@app.route('/api/richieste/export')
+def api_richieste_export():
+    format = request.args.get("format", "csv")
+    session = SessionLocal()
+    query = session.query(RichiestaFinanziamento)
+
+    def get_range(query, field):
+        min_val = request.args.get(f"{field}_min", type=float)
+        max_val = request.args.get(f"{field}_max", type=float)
+        if min_val is not None:
+            query = query.filter(getattr(RichiestaFinanziamento, field) >= min_val)
+        if max_val is not None:
+            query = query.filter(getattr(RichiestaFinanziamento, field) <= max_val)
+        return query
+
+    for field in [
+        "Eta", "RedditoLordoUltimoAnno", "AnniEsperienzaLavorativa", "ImportoRichiesto",
+        "TassoInteresseFinanziamento", "ImportoRichiestoDivisoReddito", "DurataDellaStoriaCreditiziaInAnni",
+        "AffidabilitàCreditizia", "ProbabilitaFinanziamentoApprovato"
+    ]:
+        query = get_range(query, field)
+
+    for field in [
+        "Sesso", "TitoloStudio", "InformazioniImmobile", "ScopoFinanziamento", "InadempienzeFinanziamentiPrecedenti"
+    ]:
+        value = request.args.get(field)
+        if value:
+            query = query.filter(getattr(RichiestaFinanziamento, field) == value)
+
+    results = query.all()
+    session.close()
+
+    def serialize(obj):
+        return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+    data = [serialize(r) for r in results]
+    df = pd.DataFrame(data)
+
+    if format == "json":
+        return jsonify(data)
+    elif format == "excel":
+        output = io.BytesIO()
+        df.to_excel(output, index=False)
+        output.seek(0)
+        return send_file(output, download_name="richieste.xlsx", as_attachment=True)
+    else:  # csv
+        output = io.StringIO()
+        df.to_csv(output, index=False)
+        output.seek(0)
+        return send_file(io.BytesIO(output.getvalue().encode()), download_name="richieste.csv", as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
