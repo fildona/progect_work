@@ -24,7 +24,23 @@ SaaS Finance® è un'applicazione web che utilizza machine learning per preveder
 
 1. Assicurati di avere [Miniconda](https://www.anaconda.com/download/success) installato.
 2. Apri un nuovo terminale dalla cartella del progetto.
-3. Crea l'ambiente con:
+3. Abilita conda-forge per poter scaricare tutti i pacchetti:
+
+```bash
+conda config --add channels conda-forge
+```
+
+```bash
+conda config --set channel_priority strict
+```
+
+Per verificare che la configurazione sia stata effettuata correttamente:
+
+```bash
+conda config --show channels
+```
+
+4. Crea l'ambiente con:
 
 ```bash
 conda env create -f environment.yml
