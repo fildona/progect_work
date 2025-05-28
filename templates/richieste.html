@@ -126,6 +126,7 @@
             </div>
             <div class="card-body p-4">
                 <form id="filterForm" class="row g-3 mb-4 align-items-end">
+                    <!-- Prima riga di filtri -->
                     <div class="col-md-2">
                         <label for="Eta_min" class="form-label">Età:</label>
                         <input type="number" class="form-control" name="Eta_min" id="Eta_min" placeholder="Min">
@@ -154,10 +155,47 @@
                         <input type="number" class="form-control" name="RedditoLordoUltimoAnno_min" id="RedditoLordoUltimoAnno_min" placeholder="Min">
                         <input type="number" class="form-control mt-1" name="RedditoLordoUltimoAnno_max" placeholder="Max">
                     </div>
-                     <div class="col-md-3">
+                    <div class="col-md-3">
                         <label for="ImportoRichiesto_min" class="form-label">Importo Richiesto (€):</label>
                         <input type="number" class="form-control" name="ImportoRichiesto_min" id="ImportoRichiesto_min" placeholder="Min">
                         <input type="number" class="form-control mt-1" name="ImportoRichiesto_max" placeholder="Max">
+                    </div>
+
+                    <!-- Seconda riga di filtri - NUOVI FILTRI AGGIUNTI -->
+                    <div class="col-md-2">
+                        <label for="AnniEsperienzaLavorativa_min" class="form-label">Esp. Lavorativa (anni):</label>
+                        <input type="number" class="form-control" name="AnniEsperienzaLavorativa_min" id="AnniEsperienzaLavorativa_min" placeholder="Min">
+                        <input type="number" class="form-control mt-1" name="AnniEsperienzaLavorativa_max" placeholder="Max">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="TassoInteresseFinanziamento_min" class="form-label">Tasso Interesse (%):</label>
+                        <input type="number" step="0.01" class="form-control" name="TassoInteresseFinanziamento_min" id="TassoInteresseFinanziamento_min" placeholder="Min">
+                        <input type="number" step="0.01" class="form-control mt-1" name="TassoInteresseFinanziamento_max" placeholder="Max">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="ImportoRichiestoDivisoReddito_min" class="form-label">Rapporto Imp./Red.:</label>
+                        <input type="number" step="0.0001" class="form-control" name="ImportoRichiestoDivisoReddito_min" id="ImportoRichiestoDivisoReddito_min" placeholder="Min">
+                        <input type="number" step="0.0001" class="form-control mt-1" name="ImportoRichiestoDivisoReddito_max" placeholder="Max">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="DurataDellaStoriaCreditiziaInAnni_min" class="form-label">Storia Creditizia (anni):</label>
+                        <input type="number" class="form-control" name="DurataDellaStoriaCreditiziaInAnni_min" id="DurataDellaStoriaCreditiziaInAnni_min" placeholder="Min">
+                        <input type="number" class="form-control mt-1" name="DurataDellaStoriaCreditiziaInAnni_max" placeholder="Max">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="AffidabilitàCreditizia_min" class="form-label">Affidabilità Creditizia:</label>
+                        <input type="number" class="form-control" name="AffidabilitàCreditizia_min" id="AffidabilitàCreditizia_min" placeholder="Min (300-850)">
+                        <input type="number" class="form-control mt-1" name="AffidabilitàCreditizia_max" placeholder="Max (300-850)">
+                    </div>
+
+                    <!-- Terza riga di filtri -->
+                    <div class="col-md-3">
+                        <label for="InadempienzeFinanziamentiPrecedenti" class="form-label">Inadempienze Precedenti:</label>
+                        <select class="form-select" name="InadempienzeFinanziamentiPrecedenti" id="InadempienzeFinanziamentiPrecedenti">
+                            <option value="">Tutti</option>
+                            <option value="NO">No</option>
+                            <option value="SI">Sì</option>
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <label for="ProbabilitaFinanziamentoApprovato_min" class="form-label">Prob. Approv. (%):</label>
@@ -187,6 +225,8 @@
                             <option value="Altro">Altro</option>
                         </select>
                     </div>
+
+                    <!-- Bottoni di controllo -->
                     <div class="col-md-12 mt-3 d-flex justify-content-start align-items-center gap-2">
                         <button type="submit" class="btn btn-primary"><i class="fas fa-search me-2"></i>Cerca</button>
                         <button type="button" class="btn btn-outline-secondary" id="resetBtn"><i class="fas fa-undo me-2"></i>Reset Filtri</button>
@@ -251,7 +291,7 @@ function buildQueryString(form) {
     const params = new URLSearchParams();
     for (const el of form.elements) {
         if (el.name && el.value) {
-            if ((el.name.endsWith('_min') || el.name.endsWith('_max')) && el.name === 'ProbabilitaFinanziamentoApprovato_min' || el.name === 'ProbabilitaFinanziamentoApprovato_max') {
+            if ((el.name.endsWith('_min') || el.name.endsWith('_max')) && (el.name === 'ProbabilitaFinanziamentoApprovato_min' || el.name === 'ProbabilitaFinanziamentoApprovato_max')) {
                  // Convert percentage to 0-1 scale for backend if it's for probability
                 params.append(el.name, parseFloat(el.value) / 100);
             } else {
