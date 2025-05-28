@@ -4,7 +4,7 @@ scikit-learn
 seaborn
 matplotlib
 xgboost
-Flask
+flask
 flask-cors
 sqlalchemy
 requests
